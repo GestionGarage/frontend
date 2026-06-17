@@ -1,0 +1,41 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "commandes": "Commandes",
+    "historique": "Historique mensuel",
+    "vehicule": "Véhicule",
+    "achats": "Achats",
+    "categories": "Catégories"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "back": "Retour",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "empty": "Aucun résultat",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "of": "sur",
+    "results": "résultats",
+    "confirm_delete": "Confirmer la suppression ?",
+    "actions": "Actions"
+  },
+  "statuts": {
+    "en_attente": "En attente",
+    "en_cours": "En cours",
+    "terminee": "Terminée",
+    "annulee": "Annulée"
+  },
+  "periodes": {
+    "day": "Aujourd'hui",
+    "week": "Cette semaine",
+    "month": "Ce mois",
+    "6months": "6 Derniers mois",
+    "year": "Cette année",
+    "custom": "Période personnalisée"
+  }
+}
