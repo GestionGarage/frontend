@@ -18,7 +18,7 @@ export default async function CategoriesPage() {
         title="Catégories produits"
         breadcrumb={[{ label: 'Catégories' }]}
         action={
-          <Link href="/categories/nouvelle" className="btn-primary flex items-center gap-2 text-sm py-2 px-4">
+          <Link href="/admin/categories/nouvelle" className="btn-primary flex items-center gap-2 text-sm py-2 px-4">
             + Nouvelle catégorie
           </Link>
         }
@@ -27,7 +27,7 @@ export default async function CategoriesPage() {
       {categories.length === 0 ? (
         <div className="text-center py-20 text-neutral-700">
           <p className="text-sm font-medium mb-4">Aucune catégorie créée</p>
-          <Link href="/categories/nouvelle" className="btn-primary inline-flex items-center gap-2 text-sm">
+          <Link href="/admin/categories/nouvelle" className="btn-primary inline-flex items-center gap-2 text-sm">
             Créer la première catégorie
           </Link>
         </div>

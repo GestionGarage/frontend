@@ -110,7 +110,7 @@ export default function VehiculeDepenseForm({ defaultValues }: Props) {
       } else {
         await createVehiculeDepense(data);
       }
-      router.push('/vehicule');
+      router.push('/admin/vehicule');
       router.refresh();
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Erreur');
@@ -152,6 +152,18 @@ export default function VehiculeDepenseForm({ defaultValues }: Props) {
             <input type="date" className="input-base" {...register('date_depense')} />
             {errors.date_depense && <p className="text-danger text-xs mt-1.5 font-medium">{errors.date_depense.message}</p>}
           </div>
+        </div>
+
+        {/* Notes */}
+        <div>
+          <label className="label-base">Notes</label>
+          <textarea
+            rows={3}
+            className="input-base resize-none"
+            placeholder="Détails, prestataire, référence…"
+            {...register('description')}
+          />
+          {errors.description && <p className="text-danger text-xs mt-1.5 font-medium">{errors.description.message}</p>}
         </div>
       </div>
 

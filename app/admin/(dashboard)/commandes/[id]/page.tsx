@@ -25,7 +25,7 @@ export default async function CommandeDetailPage({ params }: PageProps) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/commandes" className="text-neutral-400 hover:text-neutral-600 transition-colors">
+        <Link href="/admin/commandes" className="text-neutral-400 hover:text-neutral-600 transition-colors">
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>

@@ -16,13 +16,13 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/dashboard',          label: 'Tableau de bord',   icon: LayoutDashboard },
-  { href: '/commandes',          label: 'Commandes',          icon: ClipboardList },
-  { href: '/produits',           label: 'Produits',           icon: Package },
-  { href: '/historique-mensuel', label: 'Historique',         icon: CalendarRange },
-  { href: '/vehicule',           label: 'Véhicule',           icon: Truck },
-  { href: '/achats',             label: 'Achats',             icon: ShoppingCart },
-  { href: '/categories',         label: 'Catégories',         icon: Tag },
+  { href: '/admin/dashboard',          label: 'Tableau de bord',   icon: LayoutDashboard },
+  { href: '/admin/commandes',          label: 'Commandes',          icon: ClipboardList },
+  { href: '/admin/produits',           label: 'Produits',           icon: Package },
+  { href: '/admin/historique-mensuel', label: 'Historique',         icon: CalendarRange },
+  { href: '/admin/vehicule',           label: 'Véhicule',           icon: Truck },
+  { href: '/admin/achats',             label: 'Achats',             icon: ShoppingCart },
+  { href: '/admin/categories',         label: 'Catégories',         icon: Tag },
 ] as const;
 
 export default function Sidebar() {
@@ -31,7 +31,7 @@ export default function Sidebar() {
 
   const handleLogout = async () => {
     try { await logout(); } finally {
-      router.push('/login');
+      router.push('/admin/login');
       router.refresh();
     }
   };
@@ -68,7 +68,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`) || pathname.startsWith(`${item.href}?`);
           const Icon = item.icon;
           return (
             <Link

@@ -5,11 +5,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginDto } from '@gestion-garage/shared-validators';
 import { login } from '@/lib/client-api';
-import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function LoginForm() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -23,7 +24,7 @@ export default function LoginForm() {
     setServerError(null);
     try {
       await login(data);
-      router.push('/dashboard');
+      router.push('/admin/dashboard');
       router.refresh();
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Identifiants incorrects');
@@ -32,27 +33,27 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* Email */}
+      {/* Username */}
       <div>
-        <label className="label-base" htmlFor="email">Adresse email</label>
+        <label className="label-base" htmlFor="username">Identifiant</label>
         <div className="relative">
-          <Mail
+          <User
             size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-600 pointer-events-none"
           />
           <input
-            id="email"
-            type="email"
-            autoComplete="email"
+            id="username"
+            type="text"
+            autoComplete="username"
             className="input-base pl-9"
-            placeholder="admin@ferronnier.dz"
-            {...register('email')}
+            placeholder="Votre identifiant"
+            {...register('username')}
           />
         </div>
-        {errors.email && (
+        {errors.username && (
           <p className="mt-1.5 text-xs text-danger flex items-center gap-1">
             <AlertCircle size={11} />
-            {errors.email.message}
+            {errors.username.message}
           </p>
         )}
       </div>
@@ -67,12 +68,20 @@ export default function LoginForm() {
           />
           <input
             id="password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
-            className="input-base pl-9"
+            className="input-base pl-9 pr-10"
             placeholder="••••••••"
             {...register('password')}
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors"
+            aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+          >
+            {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+          </button>
         </div>
         {errors.password && (
           <p className="mt-1.5 text-xs text-danger flex items-center gap-1">

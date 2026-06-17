@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 
-const API_URL = process.env.API_URL ?? 'http://localhost:3001/api';
+const API_URL = process.env.API_URL ?? 'http://localhost:3001/admin';
 
 export class ApiError extends Error {
   constructor(
@@ -80,12 +80,22 @@ export async function getCommande(id: string) {
   return serverFetch<{ data: unknown }>(`/commandes/${id}`);
 }
 
+export async function getCommandesStats(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return serverFetch<{ data: { nb_commandes: number; total_general: number; cout_total: number; benefice_net: number } }>(`/commandes/stats${qs ? `?${qs}` : ''}`);
+}
+
 // ----------------------------------------------------------------
 // Vehicule
 // ----------------------------------------------------------------
 export async function getVehiculeDepenses(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
   return serverFetch<{ data: unknown[]; meta: unknown }>(`/vehicule/depenses${qs ? `?${qs}` : ''}`);
+}
+
+export async function getVehiculeStats(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return serverFetch<{ data: { total_pertes: number; livraison: number; essence: number; reparation: number } }>(`/vehicule/depenses/stats${qs ? `?${qs}` : ''}`);
 }
 
 export async function getVehiculeSummary(params: Record<string, string> = {}) {
@@ -99,6 +109,11 @@ export async function getVehiculeSummary(params: Record<string, string> = {}) {
 export async function getAchats(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
   return serverFetch<{ data: unknown[]; meta: unknown }>(`/achats${qs ? `?${qs}` : ''}`);
+}
+
+export async function getAchatsStats(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return serverFetch<{ data: { total_periode: number; nb_achats: number; par_materiau: Array<{ type: string; label: string; montant: number; pct: number }> } }>(`/achats/stats${qs ? `?${qs}` : ''}`);
 }
 
 export async function getAchatsSummary(params: Record<string, string> = {}) {
@@ -116,6 +131,18 @@ export async function getCategories(params: Record<string, string> = {}) {
 
 export async function getCategorie(id: string) {
   return serverFetch<{ data: unknown }>(`/categories/${id}`);
+}
+
+// ----------------------------------------------------------------
+// Produits
+// ----------------------------------------------------------------
+export async function getProduits(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return serverFetch<{ data: unknown[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(`/produits${qs ? `?${qs}` : ''}`);
+}
+
+export async function getProduit(id: string) {
+  return serverFetch<{ data: unknown }>(`/produits/${id}`);
 }
 
 export async function getCategoriesPublic() {

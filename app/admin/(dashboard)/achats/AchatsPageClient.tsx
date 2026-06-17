@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { Plus, Trash2, ShoppingCart, Hammer, Layers, Package } from 'lucide-react';
@@ -7,35 +7,27 @@ import { formatMontant, formatDate } from '@/lib/formatters';
 import { TYPE_MATERIAU_CONFIG } from '@/lib/constants';
 import type { AchatEntity } from '@gestion-garage/shared-validators';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
+import { deleteAchat } from '@/lib/client-api';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/admin';
 
 /* ─── Period filter ─── */
 const PERIODS = [
-  { key: 'jour',    label: 'Jour'    },
-  { key: 'semaine', label: 'Semaine' },
-  { key: 'mois',    label: 'Mois'    },
-  { key: '6mois',   label: '6 Mois'  },
-  { key: 'annee',   label: 'Année'   },
+  { key: 'jour',    label: 'Jour',    api: 'day'     },
+  { key: 'semaine', label: 'Semaine', api: 'week'    },
+  { key: 'mois',    label: 'Mois',    api: 'month'   },
+  { key: '6mois',   label: '6 Mois',  api: '6months' },
+  { key: 'annee',   label: 'Année',   api: 'year'    },
 ] as const;
 type PeriodKey = typeof PERIODS[number]['key'];
 
-const PERIOD_KPI: Record<PeriodKey, { total: number }> = {
-  jour:    { total: 12_400    },
-  semaine: { total: 74_000    },
-  mois:    { total: 245_000   },
-  '6mois': { total: 1_380_000 },
-  annee:   { total: 2_650_000 },
-};
+interface AchatsStats {
+  total_periode: number;
+  nb_achats: number;
+  par_materiau: Array<{ type: string; label: string; montant: number; pct: number }>;
+}
 
-const PLACEHOLDER_ACHATS: AchatEntity[] = [
-  { id: 'a1', type_materiau: 'metal',    designation: 'Fer à béton 10mm',     quantite: 20, unite: 'kg',    prix_unitaire: 1_200, prix_total: 24_000, fournisseur: null, date_achat: '2026-06-14', notes: null, created_at: '' },
-  { id: 'a2', type_materiau: 'soudure',  designation: 'Fil à souder 1.2mm',   quantite: 5,  unite: 'kg',    prix_unitaire: 3_500, prix_total: 17_500, fournisseur: null, date_achat: '2026-06-12', notes: null, created_at: '' },
-  { id: 'a3', type_materiau: 'peinture', designation: 'Peinture antirouille', quantite: 4,  unite: 'litre', prix_unitaire: 2_800, prix_total: 11_200, fournisseur: null, date_achat: '2026-06-10', notes: null, created_at: '' },
-  { id: 'a4', type_materiau: 'metal',    designation: 'Tube carré 40×40',     quantite: 12, unite: 'kg',    prix_unitaire: 1_400, prix_total: 16_800, fournisseur: null, date_achat: '2026-06-08', notes: null, created_at: '' },
-  { id: 'a5', type_materiau: 'visserie', designation: 'Boulons M8 (boîte)',   quantite: 3,  unite: 'unite', prix_unitaire: 1_500, prix_total: 4_500,  fournisseur: null, date_achat: '2026-06-05', notes: null, created_at: '' },
-  { id: 'a6', type_materiau: 'metal',    designation: 'Cornière 30×30',       quantite: 8,  unite: 'kg',    prix_unitaire: 1_100, prix_total: 8_800,  fournisseur: null, date_achat: '2026-06-03', notes: null, created_at: '' },
-  { id: 'a7', type_materiau: 'bois',     designation: 'Contreplaqué 18mm',    quantite: 6,  unite: 'piece', prix_unitaire: 4_500, prix_total: 27_000, fournisseur: null, date_achat: '2026-06-01', notes: null, created_at: '' },
-  { id: 'a8', type_materiau: 'bois',     designation: 'Tasseaux pin 45×45',   quantite: 10, unite: 'm',     prix_unitaire: 850,   prix_total: 8_500,  fournisseur: null, date_achat: '2026-05-29', notes: null, created_at: '' },
-];
+const EMPTY_STATS: AchatsStats = { total_periode: 0, nb_achats: 0, par_materiau: [] };
 
 /* ─── Unified premium KPI card ─── */
 interface KPICardProps {
@@ -44,9 +36,10 @@ interface KPICardProps {
   icon: React.ElementType;
   color?: string;
   iconBg?: string;
+  isLoading?: boolean;
 }
 
-function KPICard({ label, value, icon: Icon, color = '#C5A059', iconBg = 'rgba(197,160,89,0.10)' }: KPICardProps) {
+function KPICard({ label, value, icon: Icon, color = '#C5A059', iconBg = 'rgba(197,160,89,0.10)', isLoading }: KPICardProps) {
   return (
     <motion.div
       whileHover={{ y: -2, boxShadow: `0 8px 28px rgba(0,0,0,0.08), 0 0 0 1px ${color}30` }}
@@ -59,7 +52,6 @@ function KPICard({ label, value, icon: Icon, color = '#C5A059', iconBg = 'rgba(1
         minHeight: '140px',
       }}
     >
-      {/* Ambient glow */}
       <div className="absolute top-0 left-0 right-0 h-20 opacity-20" style={{ background: `linear-gradient(to bottom, ${iconBg}, transparent)` }} />
 
       <div className="relative flex flex-col flex-1">
@@ -69,9 +61,13 @@ function KPICard({ label, value, icon: Icon, color = '#C5A059', iconBg = 'rgba(1
             <Icon size={14} style={{ color }} strokeWidth={2} />
           </div>
         </div>
-        <p className="text-2xl font-bold tabular-nums tracking-tight mt-auto" style={{ color }}>
-          {value}
-        </p>
+        {isLoading ? (
+          <div className="mt-auto h-8 w-24 rounded-lg animate-pulse" style={{ backgroundColor: 'rgba(197,160,89,0.08)' }} />
+        ) : (
+          <p className="text-2xl font-bold tabular-nums tracking-tight mt-auto" style={{ color }}>
+            {value}
+          </p>
+        )}
       </div>
     </motion.div>
   );
@@ -79,35 +75,62 @@ function KPICard({ label, value, icon: Icon, color = '#C5A059', iconBg = 'rgba(1
 
 export default function AchatsPageClient() {
   const [period, setPeriod] = useState<PeriodKey>('mois');
-  const [achats, setAchats] = useState<AchatEntity[]>(PLACEHOLDER_ACHATS);
+  const [achats, setAchats] = useState<AchatEntity[]>([]);
+  const [stats, setStats] = useState<AchatsStats>(EMPTY_STATS);
+  const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
-    fetch(`${API_URL}/achats?limit=20&sort=date_desc`, { credentials: 'include' })
-      .then((r) => r.json())
-      .then((body: { data: AchatEntity[] }) => {
+  const apiPeriode = PERIODS.find((p) => p.key === period)?.api ?? 'month';
+
+  const fetchData = useCallback(async (periode: string) => {
+    setIsLoading(true);
+    try {
+      const [achatsRes, statsRes] = await Promise.all([
+        fetch(`${API_URL}/achats?periode=${periode}&limit=100&sort=date_desc`, { credentials: 'include' }),
+        fetch(`${API_URL}/achats/stats?periode=${periode}`, { credentials: 'include' }),
+      ]);
+
+      if (achatsRes.ok) {
+        const body = await achatsRes.json() as { data: AchatEntity[] };
         if (Array.isArray(body.data)) setAchats(body.data);
-      })
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      }
+      if (statsRes.ok) {
+        const body = await statsRes.json() as { data: AchatsStats };
+        if (body.data) setStats(body.data);
+      }
+    } catch {
+      // silently keep previous data on network error
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const confirmDelete = () => {
+  useEffect(() => {
+    void fetchData(apiPeriode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiPeriode]);
+
+  const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    setAchats((prev) => prev.filter((a) => a.id !== deleteTarget));
-    setDeleteTarget(null);
+    try {
+      await deleteAchat(deleteTarget);
+      setAchats((prev) => prev.filter((a) => a.id !== deleteTarget));
+    } catch {
+      // keep state unchanged if API call fails
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   const deleteTargetAchat = deleteTarget ? achats.find((a) => a.id === deleteTarget) : null;
 
-  const kpi = PERIOD_KPI[period];
   const periodLabel = PERIODS.find((p) => p.key === period)?.label ?? '';
 
-  /* Computed from live achats data — NaN-safe with || 0 */
-  const ferTotal   = useMemo(() => achats.reduce((s, a) => s + (a.type_materiau === 'metal' ? (a.prix_total || 0) : 0), 0), [achats]);
-  const boisTotal  = useMemo(() => achats.reduce((s, a) => s + (a.type_materiau === 'bois'  ? (a.prix_total || 0) : 0), 0), [achats]);
-  const autreTotal = useMemo(() => achats.reduce((s, a) => s + (!['metal', 'bois'].includes(a.type_materiau) ? (a.prix_total || 0) : 0), 0), [achats]);
+  const ferTotal   = stats.par_materiau.find((m) => m.type === 'metal')?.montant ?? 0;
+  const boisTotal  = stats.par_materiau.find((m) => m.type === 'bois')?.montant ?? 0;
+  const autreTotal = stats.par_materiau
+    .filter((m) => m.type !== 'metal' && m.type !== 'bois')
+    .reduce((s, m) => s + m.montant, 0);
 
   return (
     <div className="space-y-6">
@@ -142,20 +165,21 @@ export default function AchatsPageClient() {
         </div>
         </div>
 
-        <Link href="/achats/nouvel-achat" className="btn-primary flex items-center gap-2 text-sm py-2 px-4">
+        <Link href="/admin/achats/nouvel-achat" className="btn-primary flex items-center gap-2 text-sm py-2 px-4">
           <Plus size={15} strokeWidth={2.5} />
           Nouvel achat
         </Link>
       </div>
 
-      {/* KPI grid — total period + 3 computed material cards */}
+      {/* KPI grid — total period + 3 material breakdown cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           label={`Achats — ${periodLabel}`}
-          value={formatMontant(kpi.total)}
+          value={formatMontant(stats.total_periode)}
           icon={ShoppingCart}
           color="#C5A059"
           iconBg="rgba(197,160,89,0.10)"
+          isLoading={isLoading}
         />
         <KPICard
           label="Fer / Métal"
@@ -163,6 +187,7 @@ export default function AchatsPageClient() {
           icon={Hammer}
           color="#374151"
           iconBg="rgba(55,65,81,0.08)"
+          isLoading={isLoading}
         />
         <KPICard
           label="Bois / MDF"
@@ -170,6 +195,7 @@ export default function AchatsPageClient() {
           icon={Layers}
           color="#A8863A"
           iconBg="rgba(168,134,58,0.10)"
+          isLoading={isLoading}
         />
         <KPICard
           label="Autre"
@@ -177,6 +203,7 @@ export default function AchatsPageClient() {
           icon={Package}
           color="#64748B"
           iconBg="rgba(100,116,139,0.09)"
+          isLoading={isLoading}
         />
       </div>
 
@@ -190,7 +217,7 @@ export default function AchatsPageClient() {
           style={{ borderBottom: '1px solid rgba(197,160,89,0.10)', backgroundColor: '#F8F7F4' }}
         >
           <h3 className="font-bold text-sm text-neutral-700 uppercase tracking-wider">Journal des achats</h3>
-          <span className="text-xs text-neutral-400">{achats.length} entrées</span>
+          <span className="text-xs text-neutral-400">{isLoading ? '…' : `${achats.length} entrées`}</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -204,10 +231,16 @@ export default function AchatsPageClient() {
               </tr>
             </thead>
             <tbody>
-              {achats.length === 0 ? (
+              {isLoading ? (
                 <tr>
                   <td colSpan={4} className="table-td text-center py-14 text-neutral-400">
-                    Aucun achat enregistré
+                    Chargement…
+                  </td>
+                </tr>
+              ) : achats.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="table-td text-center py-14 text-neutral-400">
+                    Aucun achat enregistré pour cette période
                   </td>
                 </tr>
               ) : (
@@ -225,7 +258,7 @@ export default function AchatsPageClient() {
                           border: '1px solid rgba(197,160,89,0.15)',
                         }}
                       >
-                        {TYPE_MATERIAU_CONFIG[a.type_materiau].label}
+                        {TYPE_MATERIAU_CONFIG[a.type_materiau]?.label ?? a.type_materiau}
                       </span>
                     </td>
                     <td className="table-td text-right font-bold tabular-nums" style={{ color: '#C5A059' }}>
@@ -251,9 +284,9 @@ export default function AchatsPageClient() {
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
         title={deleteTargetAchat?.designation ?? ''}
-        description="Cet achat sera retiré du journal local. Cette action ne peut pas être annulée."
+        description="Cet achat sera définitivement supprimé. Cette action ne peut pas être annulée."
         onCancel={() => setDeleteTarget(null)}
-        onConfirm={confirmDelete}
+        onConfirm={handleDeleteConfirm}
       />
     </div>
   );

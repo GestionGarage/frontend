@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  email: z.string().email('Email invalide'),
+  username: z.string().min(3, 'Identifiant requis (min 3 caractères)'),
   password: z.string().min(8, 'Mot de passe requis (min 8 caractères)'),
 });
 
@@ -14,7 +14,7 @@ export type RefreshTokenDto = z.infer<typeof refreshTokenSchema>;
 
 export interface JwtPayload {
   sub: string;
-  email: string;
+  username: string;
   role: 'admin';
   iat?: number;
   exp?: number;
@@ -25,7 +25,7 @@ export interface AuthResponse {
   expires_in: number;
   user: {
     id: string;
-    email: string;
+    username: string;
     role: 'admin';
   };
 }

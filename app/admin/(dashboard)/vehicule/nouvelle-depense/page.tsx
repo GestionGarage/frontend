@@ -8,7 +8,7 @@ export default function NouvelleDepensePage() {
     <>
       <Header
         title="Nouvelle dépense véhicule"
-        breadcrumb={[{ label: 'Véhicule', href: '/vehicule' }, { label: 'Nouvelle dépense' }]}
+        breadcrumb={[{ label: 'Véhicule', href: '/admin/vehicule' }, { label: 'Nouvelle dépense' }]}
       />
       <VehiculeDepenseForm />
     </>

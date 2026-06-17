@@ -57,7 +57,7 @@ export default function CategorieCard({ categorie }: CategorieCardProps) {
             {optionsCount} option{optionsCount !== 1 ? 's' : ''}
           </span>
           <Link
-            href={`/categories/${categorie.id}`}
+            href={`/admin/categories/${categorie.id}`}
             className="text-xs font-semibold transition-colors"
             style={{ color: 'rgba(245,158,11,0.5)' }}
           >

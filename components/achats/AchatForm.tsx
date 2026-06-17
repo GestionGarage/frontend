@@ -133,7 +133,7 @@ export default function AchatForm({ defaultValues }: Props) {
       } else {
         await createAchat(payload);
       }
-      router.push('/achats');
+      router.push('/admin/achats');
       router.refresh();
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Erreur');

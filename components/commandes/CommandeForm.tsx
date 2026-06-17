@@ -378,7 +378,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
       } else {
         await createCommande(payload);
       }
-      router.push('/commandes');
+      router.push('/admin/commandes');
       router.refresh();
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Erreur');

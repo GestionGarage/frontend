@@ -112,7 +112,7 @@ export default function CategorieForm({ defaultValues }: Props) {
         await uploadCategorieImage(savedId, imageFile);
       }
 
-      router.push('/categories');
+      router.push('/admin/categories');
       router.refresh();
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Erreur');

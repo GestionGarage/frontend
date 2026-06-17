@@ -1,6 +1,6 @@
 'use client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/admin';
 
 export class ClientApiError extends Error {
   constructor(
@@ -38,15 +38,15 @@ async function clientFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return body as T;
 }
 
-// Auth
-export const login = (data: { email: string; password: string }) =>
-  clientFetch('/auth/login', { method: 'POST', body: JSON.stringify(data) });
+// Auth — controller is mounted at root so paths are /login, /logout, /me
+export const login = (data: { username: string; password: string }) =>
+  clientFetch('/login', { method: 'POST', body: JSON.stringify(data) });
 
 export const logout = () =>
-  clientFetch('/auth/logout', { method: 'POST' });
+  clientFetch('/logout', { method: 'POST' });
 
 export const getMe = () =>
-  clientFetch('/auth/me');
+  clientFetch('/me');
 
 // Commandes
 export const createCommande = (data: unknown) =>
@@ -111,6 +111,16 @@ export const uploadCategorieImage = async (categorieId: string, file: File) => {
   if (!res.ok) throw new ClientApiError(res.status, 'Échec upload');
   return res.json();
 };
+
+// Produits
+export const createProduit = (data: unknown) =>
+  clientFetch('/produits', { method: 'POST', body: JSON.stringify(data) });
+
+export const updateProduit = (id: string, data: unknown) =>
+  clientFetch(`/produits/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+
+export const deleteProduit = (id: string) =>
+  clientFetch(`/produits/${id}`, { method: 'DELETE' });
 
 // Phase 2 — Public boutique
 export const createPublicCommande = (data: unknown) =>

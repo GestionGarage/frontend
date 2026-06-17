@@ -24,8 +24,11 @@ const TICK_STYLE = {
   fontFamily: 'Plus Jakarta Sans, system-ui, sans-serif',
 };
 
+const ORIGIN_KEY = '__origin__';
+
 function getXTick(period: string | undefined, value: string): string {
   if (!value) return '';
+  if (value === ORIGIN_KEY) return '0';
   try {
     if (period === 'week') {
       const d = new Date(value.replace(/-/g, '/'));
@@ -43,6 +46,7 @@ function getXTick(period: string | undefined, value: string): string {
 
 const CustomTooltip = ({ active, payload, label }: Record<string, unknown>) => {
   if (!(active as boolean) || !(payload as unknown[])?.length) return null;
+  if ((label as string) === ORIGIN_KEY) return null;
   return (
     <div
       className="min-w-[200px] rounded-2xl p-4 text-sm"
@@ -81,10 +85,16 @@ export default function RevenueLineChart({ data, period }: { data: DataPoint[]; 
     );
   }
 
+  // Prepend a zero-origin point so every series starts from the left axis at 0
+  const chartData: DataPoint[] = [
+    { periode: ORIGIN_KEY, revenus: 0, depenses: 0, benefice: 0 },
+    ...data,
+  ];
+
   return (
     <div>
       <ResponsiveContainer width="100%" height={272}>
-        <AreaChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 8 }}>
+        <AreaChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 8 }}>
           <defs>
             {SERIES.map(({ gradId, color }) => (
               <linearGradient key={gradId} id={gradId} x1="0" y1="0" x2="0" y2="1">

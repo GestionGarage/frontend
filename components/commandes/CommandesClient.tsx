@@ -80,156 +80,6 @@ const LIVRAISON_OPTIONS = [
   { value: "vehicule", label: "Véhicule" },
 ] as const;
 
-const MOCK_COMMANDES: CommandeRow[] = [
-  {
-    id: "cmd-001",
-    prenom: "Karim",
-    nom: "Bensalem",
-    telephone: "0555 12 34 56",
-    adresse: "12 Rue des Acacias, Alger Centre",
-    categorie: { nom: "Portails Ferronnerie" },
-    option_label: "Portail coulissant motorisé",
-    mesure: "4.0×1.8 m",
-    couleur: "Noir époxy mat",
-    prix_revient: 45000,
-    prix_total: 78000,
-    tarif_livraison: 3000,
-    mode_livraison: "vehicule",
-    statut: "terminee",
-    date_commande: "2026-05-10",
-    notes: "Finition époxy mate noir. Livraison prévue avec pose sur site.",
-  },
-  {
-    id: "cmd-002",
-    prenom: "Nadia",
-    nom: "Ferhat",
-    telephone: "0661 78 90 12",
-    adresse: "7 Cité des Fleurs, Tizi Ouzou",
-    categorie: { nom: "Escaliers et Garde-corps" },
-    option_label: "Garde-corps balcon",
-    mesure: "6.0 m linéaire",
-    couleur: "Noir forge + laquage Or",
-    prix_revient: 32000,
-    prix_total: 58500,
-    tarif_livraison: 2500,
-    mode_livraison: "bureau",
-    statut: "en_cours",
-    date_commande: "2026-06-02",
-    notes:
-      "[BUREAU:Yalidine]\nAccent doré sur les pointes de lance. Validation visuelle avant expédition.",
-  },
-  {
-    id: "cmd-003",
-    prenom: "Mustapha",
-    nom: "Ould-Ali",
-    telephone: "0770 45 67 89",
-    adresse: "3 Boulevard Zighoud Youcef, Béjaïa",
-    categorie: { nom: "Escaliers et Garde-corps" },
-    option_label: "Escalier hélicoïdal forgé",
-    mesure: "Ø1.4 m — 12 marches",
-    couleur: "Noir mat",
-    prix_revient: 85000,
-    prix_total: 145000,
-    tarif_livraison: 0,
-    mode_livraison: "aucune",
-    statut: "en_attente",
-    date_commande: "2026-06-12",
-    notes:
-      "Devis accepté verbalement. Acompte de 50 % à encaisser avant démarrage.",
-  },
-  {
-    id: "cmd-004",
-    prenom: "Leila",
-    nom: "Hammoudi",
-    telephone: "0555 23 45 67",
-    adresse: "29 Rue Larbi Ben M'hidi, Oran",
-    categorie: { nom: "Portails Ferronnerie" },
-    option_label: "Portail battant double vantail",
-    mesure: "2.4×1.8 m",
-    couleur: "Anthracite thermolaqué",
-    prix_revient: 28000,
-    prix_total: 52000,
-    tarif_livraison: 4000,
-    mode_livraison: "bureau",
-    statut: "terminee",
-    date_commande: "2026-04-25",
-    notes: "[BUREAU:DHL Express]",
-  },
-  {
-    id: "cmd-005",
-    prenom: "Sofiane",
-    nom: "Tlemçani",
-    telephone: "0665 99 11 22",
-    adresse: "14 Cité Palmiers, Constantine",
-    categorie: { nom: "Escaliers et Garde-corps" },
-    option_label: "Rampe escalier droite",
-    mesure: "8 m linéaire",
-    couleur: "Noir forge",
-    prix_revient: 20000,
-    prix_total: 34000,
-    tarif_livraison: 0,
-    mode_livraison: "aucune",
-    statut: "annulee",
-    date_commande: "2026-05-18",
-    notes:
-      "Client a annulé suite à un déménagement. Matière première non transformée.",
-  },
-  {
-    id: "cmd-006",
-    prenom: "Amina",
-    nom: "Boudiaf",
-    telephone: "0550 33 44 55",
-    adresse: "5 Rue de la Paix, Sétif",
-    categorie: { nom: "Mobilier Ornemental" },
-    option_label: "Table basse ornementale",
-    mesure: "80×80 cm",
-    couleur: "Or brossé + plateau verre",
-    prix_revient: 22000,
-    prix_total: 41500,
-    tarif_livraison: 1500,
-    mode_livraison: "vehicule",
-    statut: "en_cours",
-    date_commande: "2026-06-08",
-    notes: "Plateau verre trempé 8 mm fourni par le client.",
-  },
-  {
-    id: "cmd-007",
-    prenom: "Rachid",
-    nom: "Maâzouzi",
-    telephone: "0770 66 77 88",
-    adresse: "18 Lotissement Ennasr, Blida",
-    categorie: { nom: "Portails Ferronnerie" },
-    option_label: "Portillon piéton",
-    mesure: "1.0×1.8 m",
-    couleur: "Noir",
-    prix_revient: 14000,
-    prix_total: 28000,
-    tarif_livraison: 0,
-    mode_livraison: "aucune",
-    statut: "en_attente",
-    date_commande: "2026-06-14",
-  },
-  {
-    id: "cmd-008",
-    prenom: "Yasmine",
-    nom: "Chouaki",
-    telephone: "0560 12 98 76",
-    adresse: "8 Résidence Faïza, Boumerdès",
-    categorie: { nom: "Mobilier Ornemental" },
-    option_label: "Étagère murale en fer forgé",
-    mesure: "100×30 cm",
-    couleur: "Noir + bois noyer",
-    prix_revient: 9500,
-    prix_total: 24500,
-    tarif_livraison: 2000,
-    mode_livraison: "bureau",
-    statut: "terminee",
-    date_commande: "2026-05-30",
-    notes:
-      "[BUREAU:Zaki]\nPlateau bois noyer massif traité fourni par le client.",
-  },
-];
-
 /* ── Sub-components ── */
 function StatusBadge({ statut }: { statut: CommandeRow["statut"] }) {
   const s = STATUT_STYLES[statut];
@@ -436,9 +286,7 @@ export default function CommandesClient({
   statut,
   kpi,
 }: Props) {
-  const [rows, setRows] = useState<CommandeRow[]>(
-    initialData.length > 0 ? initialData : MOCK_COMMANDES,
-  );
+  const [rows, setRows] = useState<CommandeRow[]>(initialData);
   const [selected, setSelected] = useState<CommandeRow | null>(null);
   const [draft, setDraft] = useState<Partial<CommandeRow>>({});
   const [bureauNom, setBureauNom] = useState("");
@@ -680,7 +528,7 @@ export default function CommandesClient({
             <div className="flex gap-2">
               {meta.page > 1 && (
                 <Link
-                  href={`/commandes?page=${meta.page - 1}${statut ? `&statut=${statut}` : ""}`}
+                  href={`/admin/commandes?page=${meta.page - 1}${statut ? `&statut=${statut}` : ""}`}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                   style={{
                     backgroundColor: "#F8F7F4",
@@ -693,7 +541,7 @@ export default function CommandesClient({
               )}
               {meta.page < meta.totalPages && (
                 <Link
-                  href={`/commandes?page=${meta.page + 1}${statut ? `&statut=${statut}` : ""}`}
+                  href={`/admin/commandes?page=${meta.page + 1}${statut ? `&statut=${statut}` : ""}`}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
                   style={{
                     backgroundColor: "#F8F7F4",
@@ -1126,7 +974,7 @@ export default function CommandesClient({
                   ) : (
                     <>
                       <a
-                        href={`/commandes/${selected.id}`}
+                        href={`/admin/commandes/${selected.id}`}
                         className="btn-primary flex-1 text-center text-sm"
                       >
                         Voir commande complète

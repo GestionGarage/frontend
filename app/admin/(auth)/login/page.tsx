@@ -9,15 +9,6 @@ export default function LoginPage() {
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
       style={{ backgroundColor: '#07080D' }}
     >
-      {/* Background grid */}
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-        }}
-      />
-
       {/* Amber radial glow */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
@@ -37,8 +28,8 @@ export default function LoginPage() {
           >
             <Anvil size={22} className="text-neutral-900" strokeWidth={2.5} />
           </div>
-          <h1 className="font-display text-3xl font-bold text-neutral-100 tracking-tight">FORGE</h1>
-          <p className="text-xs text-neutral-600 tracking-[0.2em] uppercase mt-1.5">ERP Ferronnier</p>
+          <h1 className="font-display text-3xl font-bold text-neutral-100 tracking-tight">MOBILE ART</h1>
+          <p className="text-xs text-neutral-600 tracking-[0.2em] uppercase mt-1.5">Sihamda Ferronnier</p>
         </div>
 
         {/* Login card */}

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
-import { getCommandes } from '@/lib/server-api';
+import { getCommandes, getCommandesStats } from '@/lib/server-api';
 import { Plus } from 'lucide-react';
 import type { CommandeEntity } from '@gestion-garage/shared-validators';
 import CommandesClient, { type CommandeRow } from '@/components/commandes/CommandesClient';
@@ -27,19 +27,25 @@ export default async function CommandesPage({ searchParams }: PageProps) {
   const queryParams: Record<string, string> = { page, limit: '20' };
   if (statut) queryParams.statut = statut;
 
-  const result = await getCommandes(queryParams).catch(() => ({
-    data: [] as CommandeEntity[],
-    meta: { total: 0, page: 1, limit: 20, totalPages: 0 },
-  }));
+  const statsParams: Record<string, string> = {};
+  if (statut) statsParams.statut = statut;
+
+  const [result, statsResult] = await Promise.all([
+    getCommandes(queryParams).catch(() => ({
+      data: [] as CommandeEntity[],
+      meta: { total: 0, page: 1, limit: 20, totalPages: 0 },
+    })),
+    getCommandesStats(statsParams).catch(() => ({
+      data: { nb_commandes: 0, total_general: 0, cout_total: 0, benefice_net: 0 },
+    })),
+  ]);
 
   const commandes = result as {
     data: CommandeEntity[];
     meta: { total: number; page: number; limit: number; totalPages: number };
   };
 
-  const totalGeneral   = commandes.data.reduce((s, c) => s + (c.prix_total      ?? 0), 0);
-  const totalLivraison = commandes.data.reduce((s, c) => s + (c.tarif_livraison ?? 0), 0);
-  const totalBase      = totalGeneral - totalLivraison;
+  const stats = (statsResult as { data: { nb_commandes: number; total_general: number; cout_total: number; benefice_net: number } }).data;
 
   return (
     <>
@@ -47,7 +53,7 @@ export default async function CommandesPage({ searchParams }: PageProps) {
         title="Commandes"
         breadcrumb={[{ label: 'Commandes' }]}
         action={
-          <Link href="/commandes/nouvelle" className="btn-primary flex items-center gap-2 text-sm">
+          <Link href="/admin/commandes/nouvelle" className="btn-primary flex items-center gap-2 text-sm">
             <Plus size={15} strokeWidth={2.5} />
             Nouvelle commande
           </Link>
@@ -61,7 +67,7 @@ export default async function CommandesPage({ searchParams }: PageProps) {
           return (
             <Link
               key={s.value}
-              href={s.value ? `/commandes?statut=${s.value}` : '/commandes'}
+              href={s.value ? `/admin/commandes?statut=${s.value}` : '/admin/commandes'}
               className="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150"
               style={{
                 backgroundColor: isActive ? `${s.color}12` : '#F8F7F4',
@@ -81,10 +87,10 @@ export default async function CommandesPage({ searchParams }: PageProps) {
         meta={commandes.meta}
         statut={statut}
         kpi={{
-          total:         commandes.meta.total,
-          totalGeneral,
-          totalLivraison,
-          totalBase,
+          total:         stats.nb_commandes,
+          totalGeneral:  stats.total_general,
+          totalBase:     stats.cout_total,
+          totalLivraison: stats.benefice_net,
           pageLabel:     `sur ${commandes.data.length} affichées`,
         }}
       />
