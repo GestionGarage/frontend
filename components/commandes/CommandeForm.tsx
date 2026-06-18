@@ -298,25 +298,30 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
 
   /* Sync prix_total RHF field from computed line total */
   useEffect(() => {
-    setValue('prix_total', totalPrixVente, { shouldValidate: totalPrixVente > 0 });
+    setValue('prix_total', totalPrixVente);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalPrixVente, setValue]);
 
   /* ── Order line handlers ── */
   const handleProductSelectForLine = (lineId: string, produitId: string) => {
     const p = produitId ? produits.find((x) => x.id === produitId) ?? null : null;
+    // Products with no dimension models go straight to free-text mode
+    const autoDimension = p !== null && p.dimensions.length === 0 ? SAISIE_LIBRE : '';
     setOrderLines((prev) => prev.map((l) => {
       if (l.id !== lineId) return l;
       return {
         ...l,
         produitId,
         produit: p,
-        dimension: '',
+        dimension: autoDimension,
         mesureLibre: '',
         prixRevientUnit: p && p.dimensions.length === 0 ? p.prix_base  : 0,
         prixVenteUnit:   p && p.dimensions.length === 0 ? p.prix_vente : 0,
       };
     }));
+    // Keep first-line mesure RHF in sync when auto-switching to saisie libre
+    const isFirstLine = orderLines[0]?.id === lineId;
+    if (isFirstLine && autoDimension === SAISIE_LIBRE) setValue('mesure', '');
     setLineErrors((prev) => { const next = { ...prev }; delete next[lineId]; return next; });
   };
 
@@ -336,7 +341,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
     // Sync mesure RHF from first line's dimension selection
     const isFirstLine = orderLines[0]?.id === lineId;
     if (isFirstLine && dimLabel !== SAISIE_LIBRE) {
-      setValue('mesure', dimLabel, { shouldValidate: true });
+      setValue('mesure', dimLabel);
     } else if (isFirstLine && dimLabel === SAISIE_LIBRE) {
       setValue('mesure', '');
     }
@@ -374,9 +379,9 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
   const handleCouleurDD = (v: string) => {
     setCouleurDD(v);
     if (v !== '__custom__') {
-      setValue('couleur', v, { shouldValidate: true });
+      setValue('couleur', v);
     } else {
-      setValue('couleur', '', { shouldValidate: false });
+      setValue('couleur', '');
     }
   };
 
@@ -420,6 +425,8 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
     try {
       const payload = {
         ...data,
+        type_livraison: typeLivraison,
+        bureau_nom: typeLivraison === 'bureau' ? (bureauNom.trim() || undefined) : undefined,
         cout_revient: totalPrixRevient > 0 ? totalPrixRevient : undefined,
         notes: noteParts.join('\n') || undefined,
       };
@@ -576,18 +583,20 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                   )}
                 </div>
 
-                {/* Dimension */}
-                {line.produit && line.produit.dimensions.length > 0 && (
+                {/* Dimension — rendered when product has models, or auto-saisie-libre for those without */}
+                {line.produit && (line.produit.dimensions.length > 0 || line.dimension === SAISIE_LIBRE) && (
                   <div>
                     <label className="label-base flex items-center gap-1.5 mb-1.5">
                       <Ruler size={10} /> Modèle de dimensions *
                     </label>
-                    <CustomDropdown
-                      options={dimOptions}
-                      value={line.dimension}
-                      onChange={(dim) => handleDimensionSelectForLine(line.id, dim)}
-                      placeholder="Choisir un modèle…"
-                    />
+                    {line.produit.dimensions.length > 0 && (
+                      <CustomDropdown
+                        options={dimOptions}
+                        value={line.dimension}
+                        onChange={(dim) => handleDimensionSelectForLine(line.id, dim)}
+                        placeholder="Choisir un modèle…"
+                      />
+                    )}
                     <AnimatePresence>
                       {line.dimension === SAISIE_LIBRE && (
                         <motion.div
@@ -598,11 +607,11 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                           className="overflow-hidden"
                         >
                           <input
-                            className="input-base mt-2"
+                            className={`input-base${line.produit.dimensions.length > 0 ? ' mt-2' : ''}`}
                             placeholder="ex: 200 × 90 × 45 cm"
                             value={line.mesureLibre}
                             onChange={(e) => updateLineMesureLibre(line.id, e.target.value)}
-                            autoFocus
+                            autoFocus={line.produit.dimensions.length > 0}
                           />
                         </motion.div>
                       )}
@@ -858,7 +867,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                       setLivraisonGratuite(v);
                       if (v) setValue('tarif_livraison', 0, { shouldValidate: false });
                     }}
-                    label="Livraison gratuite (0 DA)"
+                    label="Livraison gratuite"
                   />
                 </div>
               </motion.div>

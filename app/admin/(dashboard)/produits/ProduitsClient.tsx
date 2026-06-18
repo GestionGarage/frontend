@@ -65,6 +65,85 @@ const EMPTY_FORM = { nom: '', categorie_id: '', prix_base: '', prix_vente: '' };
 const EMPTY_DIM: DimensionModel = { label: '', prix_base: 0, prix_vente: 0 };
 const DIM_PLACEHOLDERS = ['1.4×1.6 m', '1.6×1.8 m', '0.9×2.0 m', '2.0×2.2 m', '1.2×2.4 m'];
 
+/* ─── Reusable custom dropdown ─── */
+function CustomDropdown({
+  options,
+  value,
+  onChange,
+  placeholder,
+}: {
+  options: Array<{ value: string; label: string }>;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between input-base text-left"
+      >
+        <span className={selected ? 'text-neutral-800' : 'text-neutral-400'}>
+          {selected?.label ?? placeholder}
+        </span>
+        <ChevronDown
+          size={14}
+          className="text-neutral-400 transition-transform flex-shrink-0"
+          style={{ transform: open ? 'rotate(180deg)' : 'none' }}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.14 }}
+            className="absolute z-50 w-full mt-1.5 rounded-xl overflow-hidden bg-white"
+            style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(197,160,89,0.14)' }}
+          >
+            <div className="max-h-52 overflow-y-auto">
+              {options.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { onChange(opt.value); setOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm font-medium transition-colors"
+                  style={{
+                    color: opt.value === value ? '#A8863A' : '#374151',
+                    backgroundColor: opt.value === value ? 'rgba(197,160,89,0.06)' : 'transparent',
+                  }}
+                  onMouseEnter={(e) => { if (opt.value !== value) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#F8F7F4'; }}
+                  onMouseLeave={(e) => { if (opt.value !== value) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {options.length === 0 && (
+                <p className="px-4 py-3 text-sm text-neutral-400">Aucune catégorie disponible</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function ImagePicker({
   label, previewUrl, onFile, onClear, multiple, galleryUrls, onGalleryRemove,
 }: {
@@ -504,24 +583,16 @@ export default function ProduitsClient({
 
                     <div>
                       <label className="label-base">Catégorie *</label>
-                      <div className="relative">
-                        <select
-                          value={form.categorie_id}
-                          onChange={(e) => {
-                            const chosen = categories.find((c) => c.id === e.target.value);
-                            setForm((f) => ({ ...f, categorie_id: e.target.value }));
-                            setCatNom(chosen?.nom ?? '');
-                          }}
-                          className="input-base w-full appearance-none pr-9 cursor-pointer"
-                          style={{ color: form.categorie_id ? '#1E293B' : '#9CA3AF' }}
-                        >
-                          <option value="">Sélectionner une catégorie</option>
-                          {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>{cat.nom}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
-                      </div>
+                      <CustomDropdown
+                        options={categories.map((c) => ({ value: c.id, label: c.nom }))}
+                        value={form.categorie_id}
+                        onChange={(v) => {
+                          const chosen = categories.find((c) => c.id === v);
+                          setForm((f) => ({ ...f, categorie_id: v }));
+                          setCatNom(chosen?.nom ?? '');
+                        }}
+                        placeholder="Sélectionner une catégorie…"
+                      />
                     </div>
 
                     <div>

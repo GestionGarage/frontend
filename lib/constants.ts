@@ -8,9 +8,10 @@ export const STATUT_CONFIG = {
 } as const;
 
 export const TYPE_DEPENSE_CONFIG = {
-  carburant: { label: 'Carburant / Essence', color: 'bg-blue-100 text-blue-800' },
-  reparation: { label: 'Réparation', color: 'bg-red-100 text-red-800' },
-  autre: { label: 'Autre', color: 'bg-neutral-100 text-neutral-700' },
+  carburant:  { label: 'Carburant / Essence', color: 'bg-blue-100 text-blue-800'   },
+  reparation: { label: 'Réparation',          color: 'bg-red-100 text-red-800'     },
+  autre:      { label: 'Autre',               color: 'bg-neutral-100 text-neutral-700' },
+  livraison:  { label: 'Livraison',           color: 'bg-amber-100 text-amber-800' },
 } as const;
 
 export const TYPE_MATERIAU_CONFIG = {

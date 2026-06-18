@@ -4,6 +4,7 @@ export const TypeDepenseVehiculeEnum = z.enum([
   'carburant',
   'reparation',
   'autre',
+  'livraison',
 ]);
 
 export type TypeDepenseVehicule = z.infer<typeof TypeDepenseVehiculeEnum>;
@@ -12,6 +13,7 @@ export const TYPE_DEPENSE_LABELS: Record<TypeDepenseVehicule, string> = {
   carburant: 'Carburant / Essence',
   reparation: 'Réparation',
   autre: 'Autre',
+  livraison: 'Livraison',
 };
 
 export const createVehiculeDepenseSchema = z.object({

@@ -311,15 +311,17 @@ export default function CommandesClient({
       const normMode: CommandeRow["type_livraison"] = selected.type_livraison ?? "none";
       const bureauTag = selected.notes?.match(/\[BUREAU:([^\]]+)\]/)?.[1] ?? "";
       setBureauNom(bureauTag);
+      // Strip all structured tags — only human notes shown in the textarea
+      const visibleNotes = (selected.notes ?? "")
+        .replace(/\[(BUREAU|REVIENT|PRODUITS):[^\]]*\]\n?/g, "")
+        .trim();
       setDraft({
         mesure: selected.mesure ?? "",
         couleur: selected.couleur ?? "",
         type_livraison: normMode,
         bureau_nom: selected.bureau_nom ?? "",
         tarif_livraison: selected.tarif_livraison ?? 0,
-        notes: (selected.notes ?? "")
-          .replace(/\[BUREAU:[^\]]*\]\n?/, "")
-          .trim(),
+        notes: visibleNotes,
       });
       setHasChanges(false);
     }
@@ -347,13 +349,26 @@ export default function CommandesClient({
 
   const handleSave = async () => {
     if (!selected) return;
-    const baseNotes = String(draft.notes ?? "")
-      .replace(/\[BUREAU:[^\]]*\]\n?/g, "")
+
+    // Preserve [REVIENT:] and [PRODUITS:] structural tags from the original notes
+    const structuralTags = (selected.notes ?? "")
+      .match(/\[(REVIENT|PRODUITS):[^\]]*\]/g) ?? [];
+
+    // User-edited notes: strip any lingering structural tags then reassemble
+    const humanNotes = String(draft.notes ?? "")
+      .replace(/\[(BUREAU|REVIENT|PRODUITS):[^\]]*\]\n?/g, "")
       .trim();
-    const finalNotes =
+
+    const noteParts = [
+      ...structuralTags,
       draft.type_livraison === "bureau" && bureauNom.trim()
-        ? `[BUREAU:${bureauNom.trim()}]\n${baseNotes}`.trim()
-        : baseNotes;
+        ? `[BUREAU:${bureauNom.trim()}]`
+        : "",
+      humanNotes,
+    ].filter(Boolean);
+
+    const finalNotes = noteParts.join("\n").trim() || undefined;
+
     try {
       await updateCommande(selected.id, {
         mesure:          draft.mesure          ?? undefined,
@@ -361,12 +376,12 @@ export default function CommandesClient({
         type_livraison:  draft.type_livraison  ?? "none",
         bureau_nom:      bureauNom.trim()       || undefined,
         tarif_livraison: draft.tarif_livraison ?? 0,
-        notes:           finalNotes             || undefined,
+        notes:           finalNotes,
       });
       setRows((prev) =>
         prev.map((r) =>
           r.id === selected.id
-            ? { ...r, ...draft, bureau_nom: bureauNom.trim() || null, notes: finalNotes }
+            ? { ...r, ...draft, bureau_nom: bureauNom.trim() || null, notes: finalNotes ?? null }
             : r,
         ),
       );
