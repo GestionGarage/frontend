@@ -119,7 +119,8 @@ export interface CatalogueProduit {
   categorie_id: string | null;
   prix_base: number;
   prix_vente: number;
-  dimensions: Array<{ label: string; prix_base: number; prix_vente: number }>;
+  prix_main_oeuvre: number;
+  dimensions: Array<{ label: string; prix_base: number; prix_vente: number; prix_main_oeuvre: number }>;
 }
 
 export const getProduitsParCategorie = (categorieId: string) =>

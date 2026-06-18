@@ -4,7 +4,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronDown, Package, Truck, Tag, Ruler, Printer, PlusCircle, Trash2 } from 'lucide-react';
+import { ChevronDown, Package, Truck, Tag, Ruler, Printer, PlusCircle, Trash2, Palette } from 'lucide-react';
 import {
   createCommandeSchema,
   type CreateCommandeDto,
@@ -19,21 +19,19 @@ interface CommandeFormProps {
   defaultValues?: Partial<CreateCommandeDto> & { id?: string };
 }
 
-/* ─── Couleur dropdown options ─── */
-const COULEUR_PRESET_VALUES = ['Noir', 'Blanc', 'Gold', 'Gris Anthracite', 'Blanc Crème'] as const;
-const COULEUR_DD_OPTIONS = [
-  { value: 'Noir',       label: 'Noir',        dot: '#1F2937' },
-  { value: 'Blanc',      label: 'Blanc',       dot: '#F3F4F6' },
-  { value: 'Gold',       label: 'Gold',        dot: '#C5A059' },
-  { value: '__custom__', label: 'Sur mesure…', dot: undefined },
-];
-
 /* ─── Statut dropdown options ─── */
 const STATUT_DD_OPTIONS = [
   { value: 'en_attente', label: 'En attente', dot: '#B45309' },
   { value: 'en_cours',   label: 'En cours',   dot: '#C5A059' },
   { value: 'terminee',   label: 'Terminée',   dot: '#16A34A' },
   { value: 'annulee',    label: 'Annulée',    dot: '#EF4444' },
+];
+
+const COULEUR_LINE_OPTIONS: Array<{ value: string; label: string; dot?: string }> = [
+  { value: 'Noir',  label: 'Noir',  dot: '#1F2937' },
+  { value: 'Doré',  label: 'Doré',  dot: '#C5A059' },
+  { value: 'Blanc', label: 'Blanc', dot: '#F3F4F6' },
+  { value: 'Autre', label: 'Autre…' },
 ];
 
 /* ─── Field section wrapper ─── */
@@ -88,13 +86,14 @@ function PremiumCheckbox({
 
 /* ─── Custom dropdown (reusable, supports optional dot color) ─── */
 function CustomDropdown<T extends string>({
-  options, value, onChange, placeholder, renderOption,
+  options, value, onChange, placeholder, renderOption, error,
 }: {
   options: Array<{ value: T; label: string; sub?: string; dot?: string }>;
   value: T | '';
   onChange: (v: T) => void;
   placeholder: string;
   renderOption?: (opt: { value: T; label: string; sub?: string; dot?: string }) => React.ReactNode;
+  error?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -114,6 +113,7 @@ function CustomDropdown<T extends string>({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between input-base text-left gap-2"
+        style={error ? { borderColor: '#DC2626', boxShadow: '0 0 0 3px rgba(220,38,38,0.08)' } : undefined}
       >
         <span className={`flex items-center gap-2 min-w-0 flex-1 ${selected ? 'text-neutral-800' : 'text-neutral-400'}`}>
           {selected?.dot && (
@@ -191,21 +191,33 @@ function CustomDropdown<T extends string>({
 /* ─── Multi-product order line ─── */
 interface OrderLine {
   id: string;
+  lineCategorieId: string;
   produitId: string;
   produit: CatalogueProduit | null;
-  dimension: string;      // '' | dim.label | SAISIE_LIBRE
-  mesureLibre: string;    // custom text when dimension === SAISIE_LIBRE
+  dimension: string;
+  mesureLibre: string;
+  lineCouleurMode: string;    // 'Noir' | 'Doré' | 'Blanc' | 'Autre' | ''
+  lineCouleurCustom: string;  // free text when lineCouleurMode === 'Autre'
   quantite: number;
   prixRevientUnit: number;
   prixVenteUnit: number;
+  prixMainOeuvreUnit: number;
 }
 
-function newOrderLine(): OrderLine {
+function newOrderLine(categorieId = ''): OrderLine {
   return {
     id: Math.random().toString(36).slice(2),
+    lineCategorieId: categorieId,
     produitId: '', produit: null, dimension: '',
-    mesureLibre: '', quantite: 1, prixRevientUnit: 0, prixVenteUnit: 0,
+    mesureLibre: '', lineCouleurMode: '', lineCouleurCustom: '',
+    quantite: 1, prixRevientUnit: 0, prixVenteUnit: 0, prixMainOeuvreUnit: 0,
   };
+}
+
+function parseCouleurFromString(couleur: string): { mode: string; custom: string } {
+  if (!couleur) return { mode: '', custom: '' };
+  if (['Noir', 'Doré', 'Blanc'].includes(couleur)) return { mode: couleur, custom: '' };
+  return { mode: 'Autre', custom: couleur };
 }
 
 /* ─── Main Form ─── */
@@ -218,27 +230,29 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
   const [bureauNom, setBureauNom] = useState('');
   const [livraisonGratuite, setLivraisonGratuite] = useState(false);
 
-  /* Couleur dropdown */
-  const [couleurDD, setCouleurDD] = useState<string>(() => {
-    const cv = defaultValues?.couleur ?? '';
-    if (!cv) return '';
-    return (COULEUR_PRESET_VALUES as readonly string[]).includes(cv) ? cv : '__custom__';
+  /* Multi-product order lines — first line pre-seeded with edit-mode category + color */
+  const [orderLines, setOrderLines] = useState<OrderLine[]>(() => {
+    const initCouleur = parseCouleurFromString(defaultValues?.couleur ?? '');
+    return [{
+      ...newOrderLine(defaultValues?.categorie_id ?? ''),
+      lineCouleurMode: initCouleur.mode,
+      lineCouleurCustom: initCouleur.custom,
+    }];
   });
-
-  /* Multi-product order lines */
-  const [orderLines, setOrderLines] = useState<OrderLine[]>([newOrderLine()]);
   const [lineErrors, setLineErrors] = useState<Record<string, string>>({});
 
-  /* Products fetched from API for selected category */
-  const [produits, setProduits] = useState<CatalogueProduit[]>([]);
-  const [produitsLoading, setProduitsLoading] = useState(false);
-  const isInitialized = useRef(false);
+  /* Per-line product catalog cache — keyed by categorie_id */
+  const [produitsCache, setProduitsCache] = useState<Record<string, CatalogueProduit[]>>({});
+  const [loadingCats, setLoadingCats] = useState<Set<string>>(new Set());
 
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [serverError,   setServerError]   = useState<string | null>(null);
+  const [livraisonError, setLivraisonError] = useState(false);
 
   /* Derived totals */
-  const totalPrixRevient = orderLines.reduce((s, l) => s + l.prixRevientUnit * l.quantite, 0);
-  const totalPrixVente   = orderLines.reduce((s, l) => s + l.prixVenteUnit   * l.quantite, 0);
+  const totalPrixRevient = orderLines.reduce((s, l) => s + l.prixRevientUnit    * l.quantite, 0);
+  const totalMainOeuvre  = orderLines.reduce((s, l) => s + l.prixMainOeuvreUnit * l.quantite, 0);
+  const totalPrixVente   = orderLines.reduce((s, l) => s + l.prixVenteUnit      * l.quantite, 0);
+  const beneficeNet      = totalPrixVente - totalPrixRevient - totalMainOeuvre;
 
   /* ── RHF ── */
   const {
@@ -247,46 +261,37 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
     watch,
     control,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isSubmitted },
   } = useForm<CreateCommandeDto>({
     resolver: zodResolver(createCommandeSchema),
+    mode: 'onSubmit',
     defaultValues: {
+      nom_prenom: '',
+      telephone: '',
+      adresse: '',
+      categorie_id: '',
+      prix_total: 0,
       statut: 'en_attente',
       source: 'admin',
       tarif_livraison: 0,
+      date_livraison: new Date().toISOString().split('T')[0],
       ...defaultValues,
     },
   });
 
-  const selectedCategorieId = watch('categorie_id');
-  const tarifLivraison       = watch('tarif_livraison') ?? 0;
+  const tarifLivraison = watch('tarif_livraison') ?? 0;
 
-  /* ── Category change: fetch products + cascade reset ── */
+  /* ── Pre-load products for the initial category when editing an existing order ── */
   useEffect(() => {
-    const isFirstRender = !isInitialized.current;
-    isInitialized.current = true;
-
-    if (!selectedCategorieId) {
-      if (!isFirstRender) setOrderLines([newOrderLine()]);
-      setProduits([]);
-      setValue('option_id', undefined);
-      return;
-    }
-
-    if (!isFirstRender) {
-      // User changed category — cascade reset downstream selections
-      setOrderLines([newOrderLine()]);
-      setLineErrors({});
-      setValue('option_id', undefined);
-    }
-
-    setProduitsLoading(true);
-    getProduitsParCategorie(selectedCategorieId)
-      .then((body) => setProduits(body.data ?? []))
-      .catch(() => setProduits([]))
-      .finally(() => setProduitsLoading(false));
+    const categorieId = defaultValues?.categorie_id;
+    if (!categorieId) return;
+    setLoadingCats(new Set([categorieId]));
+    getProduitsParCategorie(categorieId)
+      .then((body) => setProduitsCache({ [categorieId]: body.data ?? [] }))
+      .catch(() => setProduitsCache({ [categorieId]: [] }))
+      .finally(() => setLoadingCats(new Set()));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategorieId]);
+  }, []);
 
   useEffect(() => {
     if (typeLivraison === 'none') setValue('tarif_livraison', 0);
@@ -296,15 +301,35 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
     if (livraisonGratuite) setValue('tarif_livraison', 0, { shouldValidate: false });
   }, [livraisonGratuite, setValue]);
 
-  /* Sync prix_total RHF field from computed line total */
+  /* Sync prix_total RHF field from computed line total — re-validate after first submit so the error clears dynamically */
   useEffect(() => {
-    setValue('prix_total', totalPrixVente);
+    setValue('prix_total', totalPrixVente, { shouldValidate: isSubmitted });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalPrixVente, setValue]);
+  }, [totalPrixVente, isSubmitted]);
 
   /* ── Order line handlers ── */
+  const handleLineCategorieChange = (lineId: string, categorieId: string) => {
+    setOrderLines((prev) => prev.map((l) => l.id !== lineId ? l : {
+      ...l,
+      lineCategorieId: categorieId,
+      produitId: '', produit: null, dimension: '', mesureLibre: '',
+      prixRevientUnit: 0, prixVenteUnit: 0,
+    }));
+    setLineErrors((prev) => { const next = { ...prev }; delete next[lineId]; return next; });
+    if (orderLines[0]?.id === lineId) setValue('categorie_id', categorieId, { shouldValidate: isSubmitted });
+    if (!categorieId || produitsCache[categorieId] !== undefined) return;
+    setLoadingCats((prev) => new Set([...prev, categorieId]));
+    getProduitsParCategorie(categorieId)
+      .then((body) => setProduitsCache((prev) => ({ ...prev, [categorieId]: body.data ?? [] })))
+      .catch(() => setProduitsCache((prev) => ({ ...prev, [categorieId]: [] })))
+      .finally(() => setLoadingCats((prev) => { const s = new Set(prev); s.delete(categorieId); return s; }));
+  };
+
   const handleProductSelectForLine = (lineId: string, produitId: string) => {
-    const p = produitId ? produits.find((x) => x.id === produitId) ?? null : null;
+    const line = orderLines.find((l) => l.id === lineId);
+    const p = produitId
+      ? (produitsCache[line?.lineCategorieId ?? ''] ?? []).find((x) => x.id === produitId) ?? null
+      : null;
     // Products with no dimension models go straight to free-text mode
     const autoDimension = p !== null && p.dimensions.length === 0 ? SAISIE_LIBRE : '';
     setOrderLines((prev) => prev.map((l) => {
@@ -315,8 +340,9 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
         produit: p,
         dimension: autoDimension,
         mesureLibre: '',
-        prixRevientUnit: p && p.dimensions.length === 0 ? p.prix_base  : 0,
-        prixVenteUnit:   p && p.dimensions.length === 0 ? p.prix_vente : 0,
+        prixRevientUnit:    p && p.dimensions.length === 0 ? p.prix_base          : 0,
+        prixVenteUnit:      p && p.dimensions.length === 0 ? p.prix_vente         : 0,
+        prixMainOeuvreUnit: p && p.dimensions.length === 0 ? (p.prix_main_oeuvre ?? 0) : 0,
       };
     }));
     // Keep first-line mesure RHF in sync when auto-switching to saisie libre
@@ -334,8 +360,9 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
         ...l,
         dimension: dimLabel,
         mesureLibre: '',
-        prixRevientUnit: dim && dim.prix_base  > 0 ? dim.prix_base  : l.prixRevientUnit,
-        prixVenteUnit:   dim && dim.prix_vente > 0 ? dim.prix_vente : l.prixVenteUnit,
+        prixRevientUnit:    dim && dim.prix_base  > 0 ? dim.prix_base  : l.prixRevientUnit,
+        prixVenteUnit:      dim && dim.prix_vente > 0 ? dim.prix_vente : l.prixVenteUnit,
+        prixMainOeuvreUnit: dim && (dim.prix_main_oeuvre ?? 0) > 0 ? dim.prix_main_oeuvre : l.prixMainOeuvreUnit,
       };
     }));
     // Sync mesure RHF from first line's dimension selection
@@ -375,61 +402,77 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
     setOrderLines((prev) => prev.map((l) => l.id === lineId ? { ...l, prixVenteUnit: val } : l));
   };
 
-  /* ── Couleur dropdown handler ── */
-  const handleCouleurDD = (v: string) => {
-    setCouleurDD(v);
-    if (v !== '__custom__') {
-      setValue('couleur', v);
-    } else {
-      setValue('couleur', '');
-    }
+  const updateLineCouleurMode = (lineId: string, mode: string) => {
+    setOrderLines((prev) => prev.map((l) => l.id === lineId ? { ...l, lineCouleurMode: mode } : l));
+  };
+
+  const updateLineCouleurCustom = (lineId: string, val: string) => {
+    setOrderLines((prev) => prev.map((l) => l.id === lineId ? { ...l, lineCouleurCustom: val } : l));
+  };
+
+  const updateLineMainOeuvre = (lineId: string, val: number) => {
+    setOrderLines((prev) => prev.map((l) => l.id === lineId ? { ...l, prixMainOeuvreUnit: val } : l));
   };
 
   /* ── Submit ── */
   const onSubmit = async (data: CreateCommandeDto) => {
-    // Validate order lines (outside Zod scope)
-    const newLineErrors: Record<string, string> = {};
-    for (const line of orderLines) {
-      if (!line.produitId) {
-        newLineErrors[line.id] = 'Veuillez sélectionner un produit';
-      } else if (line.produit && line.produit.dimensions.length > 0 && !line.dimension) {
-        newLineErrors[line.id] = 'Veuillez sélectionner un modèle de dimensions';
-      } else if (line.dimension === SAISIE_LIBRE && !line.mesureLibre.trim()) {
-        newLineErrors[line.id] = 'Veuillez saisir les dimensions personnalisées';
-      }
-    }
-    if (Object.keys(newLineErrors).length > 0) {
-      setLineErrors(newLineErrors);
+    setServerError(null);
+    if (typeLivraison === 'none') {
+      setLivraisonError(true);
       return;
     }
-    setLineErrors({});
-    setServerError(null);
-
-    const produitsSummary = orderLines
-      .filter((l) => l.prixVenteUnit > 0 || l.produit)
-      .map((l) => {
-        const name = l.produit?.nom ?? 'Produit';
-        const dim  = l.dimension && l.dimension !== SAISIE_LIBRE
-          ? ` (${l.dimension})`
-          : l.mesureLibre.trim() ? ` (${l.mesureLibre.trim()})` : '';
-        return `${name}${dim} ×${l.quantite}`;
-      }).join(', ');
-
-    const noteParts = [
-      totalPrixRevient > 0 ? `[REVIENT:${totalPrixRevient}]` : '',
-      produitsSummary ? `[PRODUITS:${produitsSummary}]` : '',
-      bureauNom.trim() && typeLivraison === 'bureau' ? `[BUREAU:${bureauNom.trim()}]` : '',
-      data.notes ?? '',
-    ].filter(Boolean);
-
+    setLivraisonError(false);
     try {
+      const newLineErrors: Record<string, string> = {};
+      for (const line of orderLines) {
+        if (!line.produitId) {
+          newLineErrors[line.id] = 'Veuillez sélectionner un produit';
+        } else if (line.produit && line.produit.dimensions.length > 0 && !line.dimension) {
+          newLineErrors[line.id] = 'Veuillez sélectionner un modèle de dimensions';
+        } else if (line.dimension === SAISIE_LIBRE && !line.mesureLibre.trim()) {
+          newLineErrors[line.id] = 'Veuillez saisir les dimensions personnalisées';
+        }
+      }
+      if (Object.keys(newLineErrors).length > 0) {
+        setLineErrors(newLineErrors);
+        return;
+      }
+      setLineErrors({});
+
+      const effectiveCouleur = (l: OrderLine) =>
+        l.lineCouleurMode === 'Autre' ? l.lineCouleurCustom.trim() : l.lineCouleurMode;
+
+      const produitsSummary = orderLines
+        .filter((l) => l.prixVenteUnit > 0 || l.produit)
+        .map((l) => {
+          const cat = categories.find((c) => c.id === l.lineCategorieId);
+          const catName = cat?.nom ?? '';
+          const nom = l.produit?.nom ?? 'Produit';
+          const dim = l.dimension && l.dimension !== SAISIE_LIBRE
+            ? l.dimension
+            : l.mesureLibre.trim();
+          const couleur = effectiveCouleur(l);
+          return `${catName}||${nom}||${dim}||${couleur}||${l.quantite}`;
+        }).join(';;');
+
+      const noteParts = [
+        totalPrixRevient > 0 ? `[REVIENT:${totalPrixRevient}]` : '',
+        totalMainOeuvre  > 0 ? `[MOE:${totalMainOeuvre}]` : '',
+        produitsSummary ? `[PRODUITS:${produitsSummary}]` : '',
+        bureauNom.trim() && typeLivraison === 'bureau' ? `[BUREAU:${bureauNom.trim()}]` : '',
+        data.notes ?? '',
+      ].filter(Boolean);
+
+      const firstLine = orderLines[0];
       const payload = {
         ...data,
+        couleur: firstLine ? effectiveCouleur(firstLine) || undefined : undefined,
         type_livraison: typeLivraison,
         bureau_nom: typeLivraison === 'bureau' ? (bureauNom.trim() || undefined) : undefined,
         cout_revient: totalPrixRevient > 0 ? totalPrixRevient : undefined,
         notes: noteParts.join('\n') || undefined,
       };
+
       if (isEdit && defaultValues?.id) {
         await updateCommande(defaultValues.id, payload);
       } else {
@@ -438,7 +481,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
       router.push('/admin/commandes');
       router.refresh();
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Erreur');
+      setServerError(err instanceof Error ? err.message : 'Une erreur inattendue est survenue');
     }
   };
 
@@ -452,7 +495,19 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
   }));
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-w-2xl">
+    <form
+      onSubmit={handleSubmit(onSubmit, () => {
+        if (typeLivraison === 'none') setLivraisonError(true);
+        const errs: Record<string, string> = {};
+        for (const line of orderLines) {
+          if (!line.produitId) errs[line.id] = 'Veuillez sélectionner un produit';
+          else if (line.produit && line.produit.dimensions.length > 0 && !line.dimension) errs[line.id] = 'Veuillez sélectionner un modèle de dimensions';
+          else if (line.dimension === SAISIE_LIBRE && !line.mesureLibre.trim()) errs[line.id] = 'Veuillez saisir les dimensions personnalisées';
+        }
+        if (Object.keys(errs).length > 0) setLineErrors(errs);
+      })}
+      className="space-y-5 max-w-2xl"
+    >
       {/* ── Section 1: Informations Client ── */}
       <FormSection title="Informations client">
         <div>
@@ -460,6 +515,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
           <input
             className="input-base"
             placeholder="ex: Mohamed Benali"
+            style={errors.nom_prenom ? { borderColor: '#DC2626', boxShadow: '0 0 0 3px rgba(220,38,38,0.08)' } : undefined}
             {...register('nom_prenom')}
           />
           {errors.nom_prenom && (
@@ -475,44 +531,36 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
             placeholder="0555000000"
             inputMode="numeric"
             maxLength={10}
+            style={errors.telephone ? { borderColor: '#DC2626', boxShadow: '0 0 0 3px rgba(220,38,38,0.08)' } : undefined}
             {...register('telephone')}
+            onChange={(e) => {
+              e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+              void register('telephone').onChange(e);
+            }}
           />
           {errors.telephone && <p className="text-danger text-xs mt-1.5 font-medium">{errors.telephone.message}</p>}
         </div>
         <div>
           <label className="label-base">Adresse *</label>
-          <textarea rows={2} className="input-base resize-none" placeholder="Rue, ville..." {...register('adresse')} />
+          <textarea
+            rows={2}
+            className="input-base resize-none"
+            placeholder="Rue, ville..."
+            style={errors.adresse ? { borderColor: '#DC2626', boxShadow: '0 0 0 3px rgba(220,38,38,0.08)' } : undefined}
+            {...register('adresse')}
+          />
           {errors.adresse && <p className="text-danger text-xs mt-1.5 font-medium">{errors.adresse.message}</p>}
         </div>
       </FormSection>
 
       {/* ── Section 2: Produits commandés (multi-ligne) ── */}
       <FormSection title="Produits commandés">
-        {/* Category — order-level */}
-        <div>
-          <label className="label-base flex items-center gap-1.5">
-            <Tag size={11} />
-            Catégorie principale *
-          </label>
-          <Controller
-            name="categorie_id"
-            control={control}
-            render={({ field }) => (
-              <CustomDropdown
-                options={categorieOptions}
-                value={field.value ?? ''}
-                onChange={field.onChange}
-                placeholder="Sélectionner une catégorie"
-              />
-            )}
-          />
-          {errors.categorie_id && <p className="text-danger text-xs mt-1.5 font-medium">{errors.categorie_id.message}</p>}
-        </div>
-
-        {/* Product lines */}
+        {/* Product lines — each line has its own category + product selector */}
         <div className="space-y-3">
           {orderLines.map((line, idx) => {
-            const lineProductOptions: Array<{ value: string; label: string; sub?: string }> = produits.map((p) => ({
+            const lineProduits = produitsCache[line.lineCategorieId] ?? [];
+            const lineProduitsLoading = loadingCats.has(line.lineCategorieId);
+            const lineProductOptions: Array<{ value: string; label: string; sub?: string }> = lineProduits.map((p) => ({
               value: p.id,
               label: p.nom,
               sub: p.prix_vente > 0 ? `${p.prix_vente.toLocaleString('fr-FR')} DA` : undefined,
@@ -556,20 +604,37 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                   )}
                 </div>
 
+                {/* Per-line category selector */}
+                <div>
+                  <label className="label-base flex items-center gap-1.5 mb-1.5">
+                    <Tag size={10} /> Catégorie *
+                  </label>
+                  <CustomDropdown
+                    options={categorieOptions}
+                    value={line.lineCategorieId}
+                    onChange={(id) => handleLineCategorieChange(line.id, id)}
+                    placeholder="Sélectionner une catégorie…"
+                    error={idx === 0 && !!errors.categorie_id}
+                  />
+                  {idx === 0 && errors.categorie_id && (
+                    <p className="text-danger text-xs mt-1.5 font-medium">Veuillez sélectionner une catégorie</p>
+                  )}
+                </div>
+
                 {/* Product selector */}
                 <div>
                   <label className="label-base flex items-center gap-1.5 mb-1.5">
                     <Package size={10} /> Produit *
                   </label>
-                  {!selectedCategorieId ? (
+                  {!line.lineCategorieId ? (
                     <p className="text-xs text-neutral-400 px-3 py-2.5 rounded-lg bg-neutral-100">
                       Sélectionnez d'abord une catégorie
                     </p>
-                  ) : produitsLoading ? (
+                  ) : lineProduitsLoading ? (
                     <p className="text-xs text-neutral-400 px-3 py-2.5 rounded-lg bg-neutral-100">
                       Chargement…
                     </p>
-                  ) : produits.length === 0 ? (
+                  ) : lineProduits.length === 0 ? (
                     <p className="text-xs text-neutral-400 px-3 py-2.5 rounded-lg bg-neutral-100">
                       Aucun produit pour cette catégorie
                     </p>
@@ -619,7 +684,39 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                   </div>
                 )}
 
-                {/* Prices + quantity row */}
+                {/* Per-line color / finish */}
+                <div>
+                  <label className="label-base flex items-center gap-1.5 mb-1">
+                    <Palette size={10} /> Couleur / Finition
+                  </label>
+                  <CustomDropdown
+                    options={COULEUR_LINE_OPTIONS}
+                    value={line.lineCouleurMode}
+                    onChange={(mode) => updateLineCouleurMode(line.id, mode)}
+                    placeholder="Choisir une finition…"
+                  />
+                  <AnimatePresence>
+                    {line.lineCouleurMode === 'Autre' && (
+                      <motion.div
+                        key={`couleur-autre-${line.id}`}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <input
+                          className="input-base text-sm py-1.5 mt-2"
+                          placeholder="ex: Bronze, Rouille, Sur mesure…"
+                          value={line.lineCouleurCustom}
+                          onChange={(e) => updateLineCouleurCustom(line.id, e.target.value)}
+                          autoFocus
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Prices row */}
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="label-base mb-1">Revient (DA)</label>
@@ -632,6 +729,16 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                     />
                   </div>
                   <div>
+                    <label className="label-base mb-1">M.O. (DA)</label>
+                    <input
+                      type="number" min="0" step="1"
+                      className="input-base text-sm py-1.5"
+                      placeholder="0"
+                      value={line.prixMainOeuvreUnit || ''}
+                      onChange={(e) => updateLineMainOeuvre(line.id, Number(e.target.value) || 0)}
+                    />
+                  </div>
+                  <div>
                     <label className="label-base mb-1">Vente (DA)</label>
                     <input
                       type="number" min="0" step="1"
@@ -641,32 +748,33 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                       onChange={(e) => updateLinePriceVente(line.id, Number(e.target.value) || 0)}
                     />
                   </div>
-                  <div>
-                    <label className="label-base mb-1">Qté</label>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => updateLineQty(line.id, line.quantite - 1)}
-                        className="w-8 h-9 rounded-xl font-bold text-neutral-500 transition-colors hover:bg-neutral-200 flex-shrink-0 flex items-center justify-center"
-                        style={{ backgroundColor: '#EBEBEB' }}
-                      >
-                        −
-                      </button>
-                      <input
-                        type="number" min="1" max="999"
-                        className="input-base text-sm py-1.5 text-center"
-                        value={line.quantite}
-                        onChange={(e) => updateLineQty(line.id, Number(e.target.value) || 1)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => updateLineQty(line.id, line.quantite + 1)}
-                        className="w-8 h-9 rounded-xl font-bold text-neutral-500 transition-colors hover:bg-neutral-200 flex-shrink-0 flex items-center justify-center"
-                        style={{ backgroundColor: '#EBEBEB' }}
-                      >
-                        +
-                      </button>
-                    </div>
+                </div>
+                {/* Quantity row */}
+                <div>
+                  <label className="label-base mb-1">Quantité</label>
+                  <div className="flex items-center gap-1 max-w-[200px]">
+                    <button
+                      type="button"
+                      onClick={() => updateLineQty(line.id, line.quantite - 1)}
+                      className="w-8 h-9 rounded-xl font-bold text-neutral-500 transition-colors hover:bg-neutral-200 flex-shrink-0 flex items-center justify-center"
+                      style={{ backgroundColor: '#EBEBEB' }}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number" min="1" max="999"
+                      className="input-base text-sm py-1.5 text-center"
+                      value={line.quantite}
+                      onChange={(e) => updateLineQty(line.id, Number(e.target.value) || 1)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateLineQty(line.id, line.quantite + 1)}
+                      className="w-8 h-9 rounded-xl font-bold text-neutral-500 transition-colors hover:bg-neutral-200 flex-shrink-0 flex items-center justify-center"
+                      style={{ backgroundColor: '#EBEBEB' }}
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
 
@@ -702,36 +810,6 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
           </button>
         </div>
 
-        {/* Couleur — order-level */}
-        <div>
-          <label className="label-base">Couleur / Finition</label>
-          <CustomDropdown
-            options={COULEUR_DD_OPTIONS}
-            value={couleurDD}
-            onChange={handleCouleurDD}
-            placeholder="Choisir une couleur…"
-          />
-          <AnimatePresence>
-            {couleurDD === '__custom__' && (
-              <motion.div
-                key="couleur-custom"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="mt-2">
-                  <input
-                    className="input-base"
-                    placeholder="Préciser la couleur…"
-                    {...register('couleur')}
-                    autoFocus
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       </FormSection>
 
       {/* ── Section 3: Tarification ── */}
@@ -755,37 +833,64 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
             </div>
           ))}
           <div
-            className="flex items-center justify-between pt-2 mt-1"
+            className="pt-2 mt-1 space-y-2"
             style={{ borderTop: '1px solid rgba(197,160,89,0.12)' }}
           >
-            <span className="text-sm font-semibold text-neutral-700">Total produits</span>
-            <span className="font-mono font-bold text-base" style={{ color: '#C5A059' }}>
-              {totalPrixVente.toLocaleString('fr-FR')} DA
-            </span>
-          </div>
-          {totalPrixRevient > 0 && totalPrixVente > 0 && (
             <div className="flex items-center justify-between">
-              <span className="text-xs text-neutral-400">Marge brute</span>
-              <span className="text-xs font-bold font-mono" style={{ color: '#059669' }}>
-                {(((totalPrixVente - totalPrixRevient) / totalPrixVente) * 100).toFixed(1)}%
+              <span className="text-sm font-semibold text-neutral-700">Total produits</span>
+              <span className="font-mono font-bold text-base" style={{ color: '#C5A059' }}>
+                {totalPrixVente.toLocaleString('fr-FR')} DA
               </span>
             </div>
-          )}
+            {totalPrixRevient > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-neutral-400">Coût revient</span>
+                <span className="text-xs font-mono font-semibold text-neutral-600">
+                  {totalPrixRevient.toLocaleString('fr-FR')} DA
+                </span>
+              </div>
+            )}
+            {totalMainOeuvre > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-neutral-400">Main-d'œuvre</span>
+                <span className="text-xs font-mono font-semibold text-neutral-600">
+                  {totalMainOeuvre.toLocaleString('fr-FR')} DA
+                </span>
+              </div>
+            )}
+            {totalPrixVente > 0 && (totalPrixRevient > 0 || totalMainOeuvre > 0) && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-neutral-400">Bénéfice net</span>
+                <span
+                  className="text-xs font-mono font-bold"
+                  style={{ color: beneficeNet >= 0 ? '#059669' : '#DC2626' }}
+                >
+                  {beneficeNet.toLocaleString('fr-FR')} DA
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Hidden RHF prix_total (synced via useEffect) */}
         <input type="hidden" {...register('prix_total', { valueAsNumber: true })} />
-        {errors.prix_total && <p className="text-danger text-xs font-medium">Prix de vente requis — saisissez au moins un produit avec un prix.</p>}
+        {errors.prix_total && (
+          <p className="text-danger text-xs font-medium">
+            {orderLines.some((l) => l.produitId)
+              ? 'Le prix de vente total doit être supérieur à 0'
+              : 'Veuillez ajouter au moins un produit'}
+          </p>
+        )}
 
-        {/* Delivery type */}
+        {/* Delivery type — required */}
         <div>
           <label className="label-base flex items-center gap-1.5">
             <Truck size={11} />
-            Option de livraison
+            Option de livraison *
           </label>
           <div className="flex gap-2">
             {(['none', 'bureau', 'vehicule'] as const).map((type) => {
-              const LABELS = { none: 'Aucune', bureau: 'Bureau', vehicule: 'Véhicule propre' };
+              const LABELS = { none: 'Non définie', bureau: 'Bureau', vehicule: 'Véhicule propre' };
               const isActive = typeLivraison === type;
               return (
                 <button
@@ -795,12 +900,19 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                     setTypeLivraison(type);
                     setLivraisonGratuite(false);
                     setBureauNom('');
+                    if (type !== 'none') setLivraisonError(false);
                   }}
                   className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150"
                   style={{
-                    backgroundColor: isActive ? 'rgba(197,160,89,0.10)' : '#F8F7F4',
-                    border: `1px solid ${isActive ? 'rgba(197,160,89,0.35)' : 'rgba(197,160,89,0.12)'}`,
-                    color: isActive ? '#A8863A' : '#6B7280',
+                    backgroundColor: isActive
+                      ? type === 'none' ? 'rgba(220,38,38,0.07)' : 'rgba(197,160,89,0.10)'
+                      : '#F8F7F4',
+                    border: `1px solid ${isActive
+                      ? type === 'none' ? 'rgba(220,38,38,0.25)' : 'rgba(197,160,89,0.35)'
+                      : 'rgba(197,160,89,0.12)'}`,
+                    color: isActive
+                      ? type === 'none' ? '#DC2626' : '#A8863A'
+                      : '#6B7280',
                   }}
                 >
                   {LABELS[type]}
@@ -808,6 +920,11 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
               );
             })}
           </div>
+          {livraisonError && (
+            <p className="text-danger text-xs mt-1.5 font-medium">
+              Sélectionnez un mode de livraison (Bureau ou Véhicule propre)
+            </p>
+          )}
 
           <AnimatePresence>
             {typeLivraison === 'bureau' && (

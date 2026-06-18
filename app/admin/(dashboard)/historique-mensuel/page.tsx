@@ -5,7 +5,7 @@ import { getHistoricalTable } from '@/lib/server-api';
 import type { HistoricalRow } from './HistoriqueMensuelClient';
 
 export const metadata: Metadata = {
-  title: 'Historique mensuel — FORGE ERP',
+  title: 'Historique mensuel — MOBILE ART ERP',
 };
 
 interface PageProps {

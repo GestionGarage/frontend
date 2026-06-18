@@ -58,9 +58,9 @@ export default function Sidebar() {
           </div>
           <div>
             <p className="font-brand text-sm font-bold tracking-wide leading-none" style={{ color: '#1E293B' }}>
-              FORGE
+              MOBILE ART
             </p>
-            <p className="text-xs mt-0.5 tracking-wider" style={{ color: '#94A3B8' }}>ERP FERRONNIER</p>
+            <p className="text-xs mt-0.5 tracking-wider" style={{ color: '#94A3B8' }}>SIHAMDA FERRONNIER</p>
           </div>
         </div>
       </div>

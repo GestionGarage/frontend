@@ -27,7 +27,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { formatMontant, formatDate } from "@/lib/formatters";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
-import { updateCommande, updateCommandeStatut, deleteCommande } from "@/lib/client-api";
+import { updateCommandeStatut, deleteCommande } from "@/lib/client-api";
 
 export interface CommandeRow {
   id: string;
@@ -185,48 +185,6 @@ function InfoRow({
   );
 }
 
-function EditableField({
-  icon: Icon,
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
-  const [focused, setFocused] = useState(false);
-  return (
-    <div className="flex items-start gap-3">
-      <div
-        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-[18px]"
-        style={{ backgroundColor: "rgba(197,160,89,0.08)" }}
-      >
-        <Icon size={13} style={{ color: "#A8863A" }} />
-      </div>
-      <div className="flex-1">
-        <p className="text-xs text-neutral-400 font-medium mb-0.5">{label}</p>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder ?? `${label}...`}
-          className="w-full text-sm font-medium bg-transparent pb-1 focus:outline-none transition-all duration-200 placeholder:text-neutral-300"
-          style={{
-            color: "#374151",
-            borderBottom: `1.5px solid ${focused ? "#C5A059" : "rgba(197,160,89,0.20)"}`,
-          }}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-        />
-      </div>
-    </div>
-  );
-}
-
 function PriceRow({
   label,
   value,
@@ -268,6 +226,27 @@ function Divider() {
   );
 }
 
+interface ParsedProduct { cat: string; nom: string; dim: string; couleur: string; qty: number; }
+
+function parseProductsTag(notes: string | null | undefined): ParsedProduct[] | null {
+  const tag = notes?.match(/\[PRODUITS:([^\]]+)\]/)?.[1];
+  if (!tag) return null;
+  if (tag.includes('||')) {
+    return tag.split(';;').filter(Boolean).map((entry) => {
+      const [cat = '', nom = '', dim = '', couleur = '', qtyStr = '1'] = entry.split('||');
+      return { cat, nom, dim, couleur, qty: parseInt(qtyStr) || 1 };
+    });
+  }
+  // Legacy format: "name (dim | couleur) ×qty, ..."
+  return tag.split(/,\s+/).filter(Boolean).map((item) => {
+    const m = item.match(/^(.+?)\s*(?:\(([^)]*)\))?\s*×(\d+)$/);
+    if (!m) return { cat: '', nom: item.trim(), dim: '', couleur: '', qty: 1 };
+    const [, nom, details = '', qtyStr] = m;
+    const parts = details.split(' | ');
+    return { cat: '', nom: nom.trim(), dim: parts[0]?.trim() ?? '', couleur: parts[1]?.trim() ?? '', qty: parseInt(qtyStr) || 1 };
+  });
+}
+
 /* ── Main Component ── */
 interface Props {
   initialData: CommandeRow[];
@@ -290,9 +269,6 @@ export default function CommandesClient({
 }: Props) {
   const [rows, setRows] = useState<CommandeRow[]>(initialData);
   const [selected, setSelected] = useState<CommandeRow | null>(null);
-  const [draft, setDraft] = useState<Partial<CommandeRow>>({});
-  const [bureauNom, setBureauNom] = useState("");
-  const [hasChanges, setHasChanges] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
   const statusRef = useRef<HTMLDivElement>(null);
@@ -305,35 +281,6 @@ export default function CommandesClient({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  /* Sync draft when a new row is selected */
-  useEffect(() => {
-    if (selected) {
-      const normMode: CommandeRow["type_livraison"] = selected.type_livraison ?? "none";
-      const bureauTag = selected.notes?.match(/\[BUREAU:([^\]]+)\]/)?.[1] ?? "";
-      setBureauNom(bureauTag);
-      // Strip all structured tags — only human notes shown in the textarea
-      const visibleNotes = (selected.notes ?? "")
-        .replace(/\[(BUREAU|REVIENT|PRODUITS):[^\]]*\]\n?/g, "")
-        .trim();
-      setDraft({
-        mesure: selected.mesure ?? "",
-        couleur: selected.couleur ?? "",
-        type_livraison: normMode,
-        bureau_nom: selected.bureau_nom ?? "",
-        tarif_livraison: selected.tarif_livraison ?? 0,
-        notes: visibleNotes,
-      });
-      setHasChanges(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id]);
-
-  const updateDraft = (key: keyof CommandeRow, value: string | number) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setDraft((d) => ({ ...d, [key]: value as any }));
-    setHasChanges(true);
-  };
-
   const handleStatusChange = async (newStatut: CommandeRow["statut"]) => {
     if (!selected) return;
     try {
@@ -342,50 +289,6 @@ export default function CommandesClient({
         prev.map((r) => (r.id === selected.id ? { ...r, statut: newStatut } : r)),
       );
       setSelected((prev) => (prev ? { ...prev, statut: newStatut } : null));
-    } catch {
-      // keep state unchanged on API failure
-    }
-  };
-
-  const handleSave = async () => {
-    if (!selected) return;
-
-    // Preserve [REVIENT:] and [PRODUITS:] structural tags from the original notes
-    const structuralTags = (selected.notes ?? "")
-      .match(/\[(REVIENT|PRODUITS):[^\]]*\]/g) ?? [];
-
-    // User-edited notes: strip any lingering structural tags then reassemble
-    const humanNotes = String(draft.notes ?? "")
-      .replace(/\[(BUREAU|REVIENT|PRODUITS):[^\]]*\]\n?/g, "")
-      .trim();
-
-    const noteParts = [
-      ...structuralTags,
-      draft.type_livraison === "bureau" && bureauNom.trim()
-        ? `[BUREAU:${bureauNom.trim()}]`
-        : "",
-      humanNotes,
-    ].filter(Boolean);
-
-    const finalNotes = noteParts.join("\n").trim() || undefined;
-
-    try {
-      await updateCommande(selected.id, {
-        mesure:          draft.mesure          ?? undefined,
-        couleur:         draft.couleur         ?? undefined,
-        type_livraison:  draft.type_livraison  ?? "none",
-        bureau_nom:      bureauNom.trim()       || undefined,
-        tarif_livraison: draft.tarif_livraison ?? 0,
-        notes:           finalNotes,
-      });
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === selected.id
-            ? { ...r, ...draft, bureau_nom: bureauNom.trim() || null, notes: finalNotes ?? null }
-            : r,
-        ),
-      );
-      setSelected(null);
     } catch {
       // keep state unchanged on API failure
     }
@@ -777,39 +680,63 @@ export default function CommandesClient({
 
                   <Divider />
 
-                  {/* Product details — inline editable */}
+                  {/* Product details — read-only, one section per product */}
                   <section>
                     <h3 className="label-base">Détails du produit</h3>
-                    <div className="space-y-3">
-                      {selected.categorie?.nom && (
-                        <InfoRow
-                          icon={Tag}
-                          label="Catégorie"
-                          value={selected.categorie.nom}
-                        />
-                      )}
-                      {selected.option?.label && (
-                        <InfoRow
-                          icon={Package}
-                          label="Modèle"
-                          value={selected.option.label}
-                        />
-                      )}
-                      <EditableField
-                        icon={Ruler}
-                        label="Dimensions"
-                        value={String(draft.mesure ?? "")}
-                        onChange={(v) => updateDraft("mesure", v)}
-                        placeholder="ex: 1.6×2.0 m"
-                      />
-                      <EditableField
-                        icon={Palette}
-                        label="Couleur / Finition"
-                        value={String(draft.couleur ?? "")}
-                        onChange={(v) => updateDraft("couleur", v)}
-                        placeholder="ex: Noir époxy mat"
-                      />
-                    </div>
+                    {(() => {
+                      const products = parseProductsTag(selected.notes);
+                      if (products?.length) {
+                        return (
+                          <div>
+                            {products.map((p, i) => (
+                              <div key={i}>
+                                {i > 0 && (
+                                  <div
+                                    className="h-px my-4"
+                                    style={{ backgroundColor: "rgba(197,160,89,0.10)" }}
+                                  />
+                                )}
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className="text-xs font-bold tracking-wide px-2 py-0.5 rounded-full"
+                                      style={{ backgroundColor: "rgba(197,160,89,0.10)", color: "#A8863A" }}
+                                    >
+                                      Produit {i + 1}
+                                    </span>
+                                    {p.cat && (
+                                      <span className="text-xs text-neutral-400 font-medium">{p.cat}</span>
+                                    )}
+                                  </div>
+                                  <InfoRow icon={Package} label="Produit" value={p.nom} />
+                                  {p.dim && (
+                                    <InfoRow icon={Ruler} label="Dimensions" value={p.dim} />
+                                  )}
+                                  {p.couleur && (
+                                    <InfoRow icon={Palette} label="Couleur / Finition" value={p.couleur} />
+                                  )}
+                                  <InfoRow icon={Layers} label="Quantité" value={`×${p.qty}`} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }
+                      // Fallback for orders without structured product tag
+                      return (
+                        <div className="space-y-3">
+                          {selected.categorie?.nom && (
+                            <InfoRow icon={Tag} label="Catégorie" value={selected.categorie.nom} />
+                          )}
+                          {selected.mesure && (
+                            <InfoRow icon={Ruler} label="Dimensions" value={selected.mesure} />
+                          )}
+                          {selected.couleur && (
+                            <InfoRow icon={Palette} label="Couleur / Finition" value={selected.couleur} />
+                          )}
+                        </div>
+                      );
+                    })()}
                   </section>
 
                   <Divider />
@@ -843,145 +770,61 @@ export default function CommandesClient({
 
                   <Divider />
 
-                  {/* Livraison — always rendered */}
+                  {/* Livraison — read-only */}
                   <section>
                     <h3 className="label-base flex items-center gap-2">
                       <Truck size={12} style={{ color: "#C5A059" }} />
                       Livraison
                     </h3>
-                    <div className="flex gap-2">
-                      {LIVRAISON_OPTIONS.map((opt) => {
-                        const isOpt =
-                          (draft.type_livraison ?? "none") === opt.value;
-                        return (
-                          <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() =>
-                              updateDraft("type_livraison", opt.value)
-                            }
-                            className="flex-1 text-xs font-semibold py-2 rounded-xl transition-all duration-150"
-                            style={{
-                              backgroundColor: isOpt
-                                ? "rgba(197,160,89,0.10)"
-                                : "#F8F7F4",
-                              border: `1.5px solid ${isOpt ? "#C5A059" : "rgba(197,160,89,0.12)"}`,
-                              color: isOpt ? "#A8863A" : "#6B7280",
-                            }}
-                          >
-                            {opt.label}
-                          </button>
-                        );
-                      })}
+                    <div className="space-y-3">
+                      <InfoRow
+                        icon={Truck}
+                        label="Type"
+                        value={
+                          LIVRAISON_OPTIONS.find(
+                            (o) => o.value === (selected.type_livraison ?? "none"),
+                          )?.label ?? "Aucune"
+                        }
+                      />
+                      {selected.bureau_nom && (
+                        <InfoRow
+                          icon={MapPin}
+                          label="Bureau"
+                          value={selected.bureau_nom}
+                        />
+                      )}
+                      {(selected.tarif_livraison ?? 0) > 0 && (
+                        <InfoRow
+                          icon={Truck}
+                          label="Tarif"
+                          value={formatMontant(selected.tarif_livraison!)}
+                        />
+                      )}
                     </div>
-                    <AnimatePresence>
-                      {(draft.type_livraison ?? "none") === "bureau" && (
-                        <motion.div
-                          key="bureau-fields"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.18 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-3 space-y-3">
-                            <div>
-                              <label className="label-base">
-                                Nom du bureau
-                              </label>
-                              <input
-                                type="text"
-                                className="input-base text-sm"
-                                placeholder="ex: DHL, Zaki, Madar…"
-                                value={bureauNom}
-                                onChange={(e) => {
-                                  setBureauNom(e.target.value);
-                                  setHasChanges(true);
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <label className="label-base">
-                                Prix de livraison (DA)
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                step="1"
-                                className="input-base text-sm"
-                                placeholder="0"
-                                value={(draft.tarif_livraison ?? 0) || ""}
-                                onChange={(e) =>
-                                  updateDraft(
-                                    "tarif_livraison",
-                                    Number(e.target.value) || 0,
-                                  )
-                                }
-                              />
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                      {(draft.type_livraison ?? "none") === "vehicule" && (
-                        <motion.div
-                          key="vehicule-prix"
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.18 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-3">
-                            <label className="label-base">
-                              Prix de livraison (DA)
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="1"
-                              className="input-base text-sm"
-                              placeholder="0"
-                              value={(draft.tarif_livraison ?? 0) || ""}
-                              onChange={(e) =>
-                                updateDraft(
-                                  "tarif_livraison",
-                                  Number(e.target.value) || 0,
-                                )
-                              }
-                            />
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </section>
 
                   <Divider />
 
-                  {/* Notes */}
+                  {/* Notes — read-only */}
                   <section>
                     <h3 className="label-base flex items-center gap-2">
                       <FileText size={12} style={{ color: "#C5A059" }} />
                       Notes internes
                     </h3>
-                    <textarea
-                      className="w-full text-sm text-neutral-600 leading-relaxed rounded-xl p-4 resize-none transition-all duration-150 focus:outline-none placeholder:text-neutral-300"
-                      style={{
-                        backgroundColor: "#F8F7F4",
-                        border: "1.5px solid rgba(197,160,89,0.10)",
-                        minHeight: "76px",
-                      }}
-                      placeholder="Aucune note interne…"
-                      value={String(draft.notes ?? "")}
-                      onChange={(e) => updateDraft("notes", e.target.value)}
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor =
-                          "rgba(197,160,89,0.40)";
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor =
-                          "rgba(197,160,89,0.10)";
-                      }}
-                    />
+                    {(() => {
+                      const visibleNotes = (selected.notes ?? "")
+                        .replace(/\[(BUREAU|REVIENT|PRODUITS|MOE):[^\]]*\]\n?/g, "")
+                        .trim();
+                      return visibleNotes ? (
+                        <p className="text-sm text-neutral-600 leading-relaxed whitespace-pre-line">
+                          {visibleNotes}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-neutral-400 italic">
+                          Aucune note interne
+                        </p>
+                      );
+                    })()}
                   </section>
                 </div>
 
@@ -993,44 +836,25 @@ export default function CommandesClient({
                     backgroundColor: "#FAFAFA",
                   }}
                 >
-                  {hasChanges ? (
-                    <>
-                      <button
-                        onClick={handleSave}
-                        className="btn-primary flex-1 text-sm"
-                      >
-                        Sauvegarder les modifications
-                      </button>
-                      <button
-                        onClick={() => setSelected(null)}
-                        className="btn-secondary text-sm"
-                      >
-                        Annuler
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <a
-                        href={`/admin/commandes/${selected.id}`}
-                        className="btn-primary flex-1 text-center text-sm"
-                      >
-                        Voir commande complète
-                      </a>
-                      <button
-                        onClick={() => window.print()}
-                        className="p-2.5 rounded-xl hover:bg-neutral-100 transition-colors flex-shrink-0"
-                        title="Imprimer"
-                      >
-                        <Printer size={16} style={{ color: "#A8863A" }} />
-                      </button>
-                      <button
-                        onClick={() => setSelected(null)}
-                        className="btn-secondary text-sm"
-                      >
-                        Fermer
-                      </button>
-                    </>
-                  )}
+                  <a
+                    href={`/admin/commandes/${selected.id}`}
+                    className="btn-primary flex-1 text-center text-sm"
+                  >
+                    Voir commande complète
+                  </a>
+                  <button
+                    onClick={() => window.print()}
+                    className="p-2.5 rounded-xl hover:bg-neutral-100 transition-colors flex-shrink-0"
+                    title="Imprimer"
+                  >
+                    <Printer size={16} style={{ color: "#A8863A" }} />
+                  </button>
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="btn-secondary text-sm"
+                  >
+                    Fermer
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -1072,7 +896,7 @@ export default function CommandesClient({
                   textTransform: "uppercase",
                 }}
               >
-                ERP Ferronnier
+                SIHAMDA FERRONNIER
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -1301,7 +1125,7 @@ export default function CommandesClient({
                 letterSpacing: "1px",
               }}
             >
-              GestionGarage — ERP Ferronnier
+              GestionGarage — SIHAMDA FERRONNIER
             </div>
             <div style={{ fontSize: "10px", color: "#CBD5E1" }}>
               Imprimé le {new Date().toLocaleDateString("fr-FR")}

@@ -18,6 +18,7 @@ export interface DimensionModel {
   label: string;
   prix_base: number;
   prix_vente: number;
+  prix_main_oeuvre: number;
 }
 
 export interface ProduitRow {
@@ -27,6 +28,7 @@ export interface ProduitRow {
   categorie?: { id: string; nom: string } | null;
   prix_base: number;
   prix_vente: number;
+  prix_main_oeuvre: number;
   image_url: string | null;
   gallery_urls: string[];
   dimensions: DimensionModel[];
@@ -61,8 +63,8 @@ function toSlug(str: string): string {
     .replace(/-+/g, '-');
 }
 
-const EMPTY_FORM = { nom: '', categorie_id: '', prix_base: '', prix_vente: '' };
-const EMPTY_DIM: DimensionModel = { label: '', prix_base: 0, prix_vente: 0 };
+const EMPTY_FORM = { nom: '', categorie_id: '', prix_base: '', prix_vente: '', prix_main_oeuvre: '' };
+const EMPTY_DIM: DimensionModel = { label: '', prix_base: 0, prix_vente: 0, prix_main_oeuvre: 0 };
 const DIM_PLACEHOLDERS = ['1.4×1.6 m', '1.6×1.8 m', '0.9×2.0 m', '2.0×2.2 m', '1.2×2.4 m'];
 
 /* ─── Reusable custom dropdown ─── */
@@ -255,6 +257,7 @@ export default function ProduitsClient({
       categorie_id: p.categorie_id ?? '',
       prix_base: String(p.prix_base),
       prix_vente: String(p.prix_vente),
+      prix_main_oeuvre: String(p.prix_main_oeuvre ?? 0),
     });
     setSlug(toSlug(p.nom));
     setCatNom(p.categorie?.nom ?? '');
@@ -298,12 +301,15 @@ export default function ProduitsClient({
       if (!prixVente || prixVente <= 0) { setError('Le prix de vente est requis.'); return; }
     }
 
+    const prixMainOeuvre = parseFloat(form.prix_main_oeuvre) || 0;
+
     setSaving(true);
     const payload = {
       nom: form.nom.trim(),
       categorie_id: form.categorie_id || null,
       prix_base: prixBase,
       prix_vente: prixVente,
+      prix_main_oeuvre: prixMainOeuvre,
       image_url: mainImageUrl || null,
       gallery_urls: galleryUrls,
       dimensions: validDims,
@@ -338,9 +344,12 @@ export default function ProduitsClient({
   };
 
   const deleteTargetProduit = deleteTarget ? rows.find((p) => p.id === deleteTarget) : null;
-  const prixBase  = parseFloat(form.prix_base);
-  const prixVente = parseFloat(form.prix_vente);
-  const margin    = prixBase > 0 && prixVente > 0 ? ((prixVente - prixBase) / prixVente) * 100 : null;
+  const prixBase       = parseFloat(form.prix_base);
+  const prixVente      = parseFloat(form.prix_vente);
+  const prixMO         = parseFloat(form.prix_main_oeuvre) || 0;
+  const margin         = prixBase > 0 && prixVente > 0
+    ? ((prixVente - prixBase - prixMO) / prixVente) * 100
+    : null;
 
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < meta.totalPages;
@@ -641,12 +650,18 @@ export default function ProduitsClient({
                                       </button>
                                     )}
                                   </div>
-                                  <div className="grid grid-cols-2 gap-2">
+                                  <div className="grid grid-cols-3 gap-2">
                                     <div>
                                       <span className="text-xs text-neutral-400 font-medium mb-1 block">Revient (DA)</span>
                                       <input type="number" min="0" step="0.01" className="input-base text-sm py-1.5"
                                         placeholder="0" value={dim.prix_base || ''}
                                         onChange={(e) => updateDim(idx, 'prix_base', Number(e.target.value) || 0)} />
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-neutral-400 font-medium mb-1 block">M.O. (DA)</span>
+                                      <input type="number" min="0" step="0.01" className="input-base text-sm py-1.5"
+                                        placeholder="0" value={dim.prix_main_oeuvre || ''}
+                                        onChange={(e) => updateDim(idx, 'prix_main_oeuvre', Number(e.target.value) || 0)} />
                                     </div>
                                     <div>
                                       <span className="text-xs text-neutral-400 font-medium mb-1 block">Vente (DA)</span>
@@ -675,24 +690,30 @@ export default function ProduitsClient({
                         <motion.div key="global-prix"
                           initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-3 gap-3">
                             <div>
-                              <label className="label-base">Prix de base (DA) *</label>
+                              <label className="label-base">Revient (DA) *</label>
                               <input type="number" min="0" step="0.01" className="input-base"
-                                placeholder="Coût revient" value={form.prix_base}
+                                placeholder="0" value={form.prix_base}
                                 onChange={(e) => setForm((f) => ({ ...f, prix_base: e.target.value }))} />
                             </div>
                             <div>
-                              <label className="label-base">Prix de vente (DA) *</label>
+                              <label className="label-base">M.O. (DA)</label>
                               <input type="number" min="0" step="0.01" className="input-base"
-                                placeholder="Prix client" value={form.prix_vente}
+                                placeholder="0" value={form.prix_main_oeuvre}
+                                onChange={(e) => setForm((f) => ({ ...f, prix_main_oeuvre: e.target.value }))} />
+                            </div>
+                            <div>
+                              <label className="label-base">Vente (DA) *</label>
+                              <input type="number" min="0" step="0.01" className="input-base"
+                                placeholder="0" value={form.prix_vente}
                                 onChange={(e) => setForm((f) => ({ ...f, prix_vente: e.target.value }))} />
                             </div>
                           </div>
                           {margin !== null && (
                             <div className="rounded-xl px-3 py-2.5 flex items-center justify-between mt-3"
                               style={{ backgroundColor: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.12)' }}>
-                              <span className="text-xs text-neutral-500 font-medium">Marge estimée</span>
+                              <span className="text-xs text-neutral-500 font-medium">Marge nette estimée</span>
                               <span className="font-mono font-bold text-sm" style={{ color: '#059669' }}>
                                 {margin.toFixed(1)}%
                               </span>
@@ -803,8 +824,15 @@ export default function ProduitsClient({
                             style={{ backgroundColor: '#F8F7F4', border: '1px solid rgba(197,160,89,0.10)' }}>
                             <span className="text-sm font-semibold text-neutral-700">{dim.label}</span>
                             <div className="flex items-center gap-3">
-                              {dim.prix_base > 0 && <span className="text-xs text-neutral-400 font-mono">{formatMontant(dim.prix_base)}</span>}
-                              {dim.prix_vente > 0 && <span className="text-sm font-bold font-mono" style={{ color: '#C5A059' }}>{formatMontant(dim.prix_vente)}</span>}
+                              {dim.prix_base > 0 && (
+                                <span className="text-xs text-neutral-400 font-mono" title="Revient">{formatMontant(dim.prix_base)}</span>
+                              )}
+                              {(dim.prix_main_oeuvre ?? 0) > 0 && (
+                                <span className="text-xs font-mono" style={{ color: '#6B7280' }} title="M.O.">+{formatMontant(dim.prix_main_oeuvre)}</span>
+                              )}
+                              {dim.prix_vente > 0 && (
+                                <span className="text-sm font-bold font-mono" style={{ color: '#C5A059' }}>{formatMontant(dim.prix_vente)}</span>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -818,6 +846,12 @@ export default function ProduitsClient({
                           <span className="text-sm text-neutral-500">Prix de revient</span>
                           <span className="font-mono text-sm font-semibold text-neutral-600">{formatMontant(quickView.prix_base)}</span>
                         </div>
+                        {(quickView.prix_main_oeuvre ?? 0) > 0 && (
+                          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(197,160,89,0.08)' }}>
+                            <span className="text-sm text-neutral-500">Main-d'œuvre</span>
+                            <span className="font-mono text-sm font-semibold text-neutral-600">{formatMontant(quickView.prix_main_oeuvre)}</span>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: 'rgba(197,160,89,0.04)' }}>
                           <span className="text-sm font-bold text-neutral-700">Prix de vente</span>
                           <span className="font-mono font-bold text-sm" style={{ color: '#C5A059' }}>{formatMontant(quickView.prix_vente)}</span>

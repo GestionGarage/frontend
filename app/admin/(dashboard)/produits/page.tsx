@@ -6,7 +6,7 @@ import type { CategorieEntity } from '@gestion-garage/shared-validators';
 import type { ProduitRow } from './ProduitsClient';
 import { Plus } from 'lucide-react';
 
-export const metadata: Metadata = { title: 'Produits — FORGE ERP' };
+export const metadata: Metadata = { title: 'Produits — MOBILE ART ERP' };
 
 interface PageProps {
   searchParams: Promise<Record<string, string>>;

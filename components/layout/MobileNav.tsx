@@ -55,7 +55,7 @@ export default function MobileNav() {
             <Anvil size={13} className="text-white" strokeWidth={2.5} />
           </div>
           <div className="leading-none">
-            <p className="font-bold text-sm tracking-wide" style={{ color: '#1E293B' }}>FORGE</p>
+            <p className="font-bold text-sm tracking-wide" style={{ color: '#1E293B' }}>MOBILE ART</p>
             <p className="text-xs tracking-wider" style={{ color: '#94A3B8' }}>ERP</p>
           </div>
         </div>
@@ -110,8 +110,8 @@ export default function MobileNav() {
                     <Anvil size={15} className="text-white" strokeWidth={2.5} />
                   </div>
                   <div>
-                    <p className="font-bold text-sm tracking-wide leading-none" style={{ color: '#1E293B' }}>FORGE</p>
-                    <p className="text-xs tracking-wider mt-0.5" style={{ color: '#94A3B8' }}>ERP FERRONNIER</p>
+                    <p className="font-bold text-sm tracking-wide leading-none" style={{ color: '#1E293B' }}>MOBILE ART</p>
+                    <p className="text-xs tracking-wider mt-0.5" style={{ color: '#94A3B8' }}>SIHAMDA FERRONNIER</p>
                   </div>
                 </div>
                 <button

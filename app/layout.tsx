@@ -1,7 +1,7 @@
 import '../styles/globals.css';
 
 export const metadata= {
-  title: { default: 'GestionGarage — ERP Ferronnier', template: '%s | GestionGarage' },
+  title: { default: 'GestionGarage — SIHAMDA FERRONNIER', template: '%s | GestionGarage' },
   description: 'Système de gestion financière pour artisan ferronnier',
   robots: 'noindex',
   icons: {

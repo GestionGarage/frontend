@@ -30,18 +30,66 @@ function getXTick(period: string | undefined, value: string): string {
   if (!value) return '';
   if (value === ORIGIN_KEY) return '0';
   try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    if (period === 'day') {
+      return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
     if (period === 'week') {
-      const d = new Date(value.replace(/-/g, '/'));
       return d.toLocaleDateString('fr-FR', { weekday: 'short' });
     }
     if (period === 'month') {
-      const d = new Date(value.replace(/-/g, '/'));
-      return `S${Math.ceil(d.getDate() / 7)}`;
+      return `S${Math.ceil(d.getUTCDate() / 7)}`;
     }
-    return new Date(value.replace(/-/g, '/')).toLocaleDateString('fr-FR', { month: 'short' });
+    return d.toLocaleDateString('fr-FR', { month: 'short' });
   } catch {
-    return formatDateShort(value);
+    return '';
   }
+}
+
+function buildWeekSkeleton(data: DataPoint[]): DataPoint[] {
+  const today = new Date();
+  const dow = today.getUTCDay() === 0 ? 6 : today.getUTCDay() - 1;
+  const monday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - dow));
+  const lookup = new Map<string, DataPoint>();
+  for (const d of data) {
+    const date = new Date(d.periode);
+    const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;
+    lookup.set(key, d);
+  }
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = new Date(monday);
+    day.setUTCDate(monday.getUTCDate() + i);
+    const key = `${day.getUTCFullYear()}-${day.getUTCMonth()}-${day.getUTCDate()}`;
+    return lookup.get(key) ?? { periode: day.toISOString(), revenus: 0, depenses: 0, benefice: 0 };
+  });
+}
+
+function aggregateToWeeks(data: DataPoint[]): DataPoint[] {
+  const weekMap = new Map<number, DataPoint>();
+  for (const d of data) {
+    const date = new Date(d.periode);
+    const weekNum = Math.ceil(date.getUTCDate() / 7);
+    if (!weekMap.has(weekNum)) {
+      weekMap.set(weekNum, { periode: d.periode, revenus: 0, depenses: 0, benefice: 0 });
+    }
+    const entry = weekMap.get(weekNum)!;
+    entry.revenus += d.revenus;
+    entry.depenses += d.depenses;
+    entry.benefice += d.benefice;
+  }
+  const today = new Date();
+  const daysInMonth = new Date(today.getUTCFullYear(), today.getUTCMonth() + 1, 0).getUTCDate();
+  const totalWeeks = Math.ceil(daysInMonth / 7);
+  for (let w = 1; w <= totalWeeks; w++) {
+    if (!weekMap.has(w)) {
+      const day = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), (w - 1) * 7 + 1));
+      weekMap.set(w, { periode: day.toISOString(), revenus: 0, depenses: 0, benefice: 0 });
+    }
+  }
+  return Array.from(weekMap.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([, d]) => d);
 }
 
 const CustomTooltip = ({ active, payload, label }: Record<string, unknown>) => {
@@ -75,20 +123,29 @@ const CustomTooltip = ({ active, payload, label }: Record<string, unknown>) => {
 };
 
 export default function RevenueLineChart({ data, period }: { data: DataPoint[]; period?: string }) {
-  if (!data.length) {
+  if (period === 'day') {
     return (
       <div className="flex items-center justify-center h-64 text-neutral-300 text-sm text-center px-4">
-        {period === 'day'
-          ? "Vue horaire non disponible — sélectionnez une autre période"
-          : "Aucune donnée pour cette période"}
+        Vue horaire non disponible — sélectionnez une autre période
       </div>
     );
   }
 
-  // Prepend a zero-origin point so every series starts from the left axis at 0
+  if (!data.length) {
+    return (
+      <div className="flex items-center justify-center h-64 text-neutral-300 text-sm text-center px-4">
+        Aucune donnée pour cette période
+      </div>
+    );
+  }
+
+  let processedData = data;
+  if (period === 'week') processedData = buildWeekSkeleton(data);
+  else if (period === 'month') processedData = aggregateToWeeks(data);
+
   const chartData: DataPoint[] = [
     { periode: ORIGIN_KEY, revenus: 0, depenses: 0, benefice: 0 },
-    ...data,
+    ...processedData,
   ];
 
   return (
