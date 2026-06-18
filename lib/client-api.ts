@@ -113,6 +113,18 @@ export const uploadCategorieImage = async (categorieId: string, file: File) => {
 };
 
 // Produits
+export interface CatalogueProduit {
+  id: string;
+  nom: string;
+  categorie_id: string | null;
+  prix_base: number;
+  prix_vente: number;
+  dimensions: Array<{ label: string; prix_base: number; prix_vente: number }>;
+}
+
+export const getProduitsParCategorie = (categorieId: string) =>
+  clientFetch<{ data: CatalogueProduit[] }>(`/produits?categorie_id=${encodeURIComponent(categorieId)}&limit=200`);
+
 export const createProduit = (data: unknown) =>
   clientFetch('/produits', { method: 'POST', body: JSON.stringify(data) });
 

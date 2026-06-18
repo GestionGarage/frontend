@@ -67,17 +67,10 @@ export default function PublicCommandeForm({ categories, preselectCategorieId }:
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="card space-y-4">
         <h3 className="font-semibold text-neutral-800 border-b border-neutral-100 pb-2">Vos informations</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label-base">Prénom *</label>
-            <input className="input-base" {...register('prenom')} />
-            {errors.prenom && <p className="text-danger text-xs mt-1">{errors.prenom.message}</p>}
-          </div>
-          <div>
-            <label className="label-base">Nom *</label>
-            <input className="input-base" {...register('nom')} />
-            {errors.nom && <p className="text-danger text-xs mt-1">{errors.nom.message}</p>}
-          </div>
+        <div>
+          <label className="label-base">Nom & Prénom *</label>
+          <input className="input-base" placeholder="ex: Mohamed Benali" {...register('nom_prenom')} />
+          {errors.nom_prenom && <p className="text-danger text-xs mt-1">{errors.nom_prenom.message}</p>}
         </div>
         <div>
           <label className="label-base">Téléphone *</label>

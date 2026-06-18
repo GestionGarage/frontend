@@ -13,13 +13,10 @@ export type CommandeStatut = z.infer<typeof CommandeStatutEnum>;
 export type CommandeSource = z.infer<typeof CommandeSourceEnum>;
 
 export const createCommandeSchema = z.object({
-  nom: z.string().min(1, 'Nom requis').max(100),
-  prenom: z.string().min(1, 'Prénom requis').max(100),
+  nom_prenom: z.string().min(1, 'Nom & prénom requis').max(100),
   telephone: z
     .string()
-    .min(8, 'Téléphone invalide')
-    .max(20)
-    .regex(/^[\d\s\+\-\(\)]+$/, 'Format téléphone invalide'),
+    .regex(/^0\d{9}$/, 'Le numéro doit commencer par 0 et contenir exactement 10 chiffres'),
   adresse: z.string().min(1, 'Adresse requise'),
   categorie_id: z.string().uuid('Catégorie invalide'),
   option_id: z.string().uuid('Option invalide').optional(),
@@ -59,15 +56,19 @@ export type CommandeQueryDto = z.infer<typeof commandeQuerySchema>;
 
 export interface CommandeEntity {
   id: string;
-  nom: string;
-  prenom: string;
+  nom_prenom: string;
   telephone: string;
   adresse: string;
   categorie_id: string | null;
+  categorie?: { id: string; nom: string } | null;
   option_id: string | null;
+  option?: { id: string; label: string } | null;
   mesure: string | null;
   couleur: string | null;
+  type_livraison: 'none' | 'bureau' | 'vehicule' | null;
+  bureau_nom: string | null;
   tarif_livraison: number;
+  cout_revient: number | null;
   prix_total: number;
   statut: CommandeStatut;
   source: CommandeSource;

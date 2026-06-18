@@ -27,24 +27,26 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { formatMontant, formatDate } from "@/lib/formatters";
 import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
+import { updateCommande, updateCommandeStatut, deleteCommande } from "@/lib/client-api";
 
 export interface CommandeRow {
   id: string;
-  prenom: string;
-  nom: string;
+  nom_prenom: string;
   telephone: string;
-  adresse?: string;
-  categorie?: { nom: string };
-  option_label?: string;
-  mesure?: string;
-  couleur?: string;
-  prix_revient?: number;
+  adresse?: string | null;
+  categorie?: { nom: string } | null;
+  option?: { id: string; label: string } | null;
+  option_id?: string | null;
+  mesure?: string | null;
+  couleur?: string | null;
+  cout_revient?: number | null;
   prix_total: number;
   tarif_livraison?: number;
-  mode_livraison?: string;
+  type_livraison?: "none" | "bureau" | "vehicule" | null;
+  bureau_nom?: string | null;
   statut: "en_attente" | "en_cours" | "terminee" | "annulee";
   date_commande: string;
-  notes?: string;
+  notes?: string | null;
 }
 
 const STATUT_STYLES = {
@@ -75,8 +77,8 @@ const STATUT_STYLES = {
 } as const;
 
 const LIVRAISON_OPTIONS = [
-  { value: "aucune", label: "Aucune" },
-  { value: "bureau", label: "Bureau" },
+  { value: "none",     label: "Aucune"   },
+  { value: "bureau",   label: "Bureau"   },
   { value: "vehicule", label: "Véhicule" },
 ] as const;
 
@@ -306,17 +308,14 @@ export default function CommandesClient({
   /* Sync draft when a new row is selected */
   useEffect(() => {
     if (selected) {
-      /* Normalize legacy 'yalidine' → 'bureau' */
-      const rawMode = selected.mode_livraison ?? "aucune";
-      const normMode = rawMode === "yalidine" ? "bureau" : rawMode;
-      /* Extract bureau name from [BUREAU:xxx] tag in notes */
+      const normMode: CommandeRow["type_livraison"] = selected.type_livraison ?? "none";
       const bureauTag = selected.notes?.match(/\[BUREAU:([^\]]+)\]/)?.[1] ?? "";
       setBureauNom(bureauTag);
       setDraft({
-        option_label: selected.option_label ?? "",
         mesure: selected.mesure ?? "",
         couleur: selected.couleur ?? "",
-        mode_livraison: normMode,
+        type_livraison: normMode,
+        bureau_nom: selected.bureau_nom ?? "",
         tarif_livraison: selected.tarif_livraison ?? 0,
         notes: (selected.notes ?? "")
           .replace(/\[BUREAU:[^\]]*\]\n?/, "")
@@ -333,43 +332,66 @@ export default function CommandesClient({
     setHasChanges(true);
   };
 
-  /* Status change is IMMEDIATE — updates rows + selected state without needing explicit save */
-  const handleStatusChange = (newStatut: CommandeRow["statut"]) => {
+  const handleStatusChange = async (newStatut: CommandeRow["statut"]) => {
     if (!selected) return;
-    setRows((prev) =>
-      prev.map((r) => (r.id === selected.id ? { ...r, statut: newStatut } : r)),
-    );
-    setSelected((prev) => (prev ? { ...prev, statut: newStatut } : null));
+    try {
+      await updateCommandeStatut(selected.id, newStatut);
+      setRows((prev) =>
+        prev.map((r) => (r.id === selected.id ? { ...r, statut: newStatut } : r)),
+      );
+      setSelected((prev) => (prev ? { ...prev, statut: newStatut } : null));
+    } catch {
+      // keep state unchanged on API failure
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selected) return;
-    /* Re-inject [BUREAU:xxx] tag into notes when bureau mode is active */
     const baseNotes = String(draft.notes ?? "")
       .replace(/\[BUREAU:[^\]]*\]\n?/g, "")
       .trim();
     const finalNotes =
-      draft.mode_livraison === "bureau" && bureauNom.trim()
+      draft.type_livraison === "bureau" && bureauNom.trim()
         ? `[BUREAU:${bureauNom.trim()}]\n${baseNotes}`.trim()
         : baseNotes;
-    setRows((prev) =>
-      prev.map((r) =>
-        r.id === selected.id ? { ...r, ...draft, notes: finalNotes } : r,
-      ),
-    );
-    setSelected(null);
+    try {
+      await updateCommande(selected.id, {
+        mesure:          draft.mesure          ?? undefined,
+        couleur:         draft.couleur         ?? undefined,
+        type_livraison:  draft.type_livraison  ?? "none",
+        bureau_nom:      bureauNom.trim()       || undefined,
+        tarif_livraison: draft.tarif_livraison ?? 0,
+        notes:           finalNotes             || undefined,
+      });
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === selected.id
+            ? { ...r, ...draft, bureau_nom: bureauNom.trim() || null, notes: finalNotes }
+            : r,
+        ),
+      );
+      setSelected(null);
+    } catch {
+      // keep state unchanged on API failure
+    }
   };
 
   const handleDeleteRequest = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelected(null); // close quick view before opening confirm
+    setSelected(null);
     setDeleteTarget(id);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteTarget) return;
-    setRows((prev) => prev.filter((r) => r.id !== deleteTarget));
-    setDeleteTarget(null);
+    try {
+      await deleteCommande(deleteTarget);
+      setRows((prev) => prev.filter((r) => r.id !== deleteTarget));
+    } catch {
+      // keep rows unchanged on API failure
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   const deleteTargetRow = deleteTarget
@@ -461,7 +483,7 @@ export default function CommandesClient({
                   >
                     <td className="px-4 py-3.5">
                       <p className="text-sm font-semibold text-neutral-800 group-hover:text-primary transition-colors">
-                        {c.prenom} {c.nom}
+                        {c.nom_prenom}
                       </p>
                       <p className="text-xs text-neutral-400 mt-0.5">
                         {c.telephone}
@@ -607,7 +629,7 @@ export default function CommandesClient({
                       Aperçu Rapide
                     </p>
                     <h2 className="text-lg font-bold text-neutral-800">
-                      {selected.prenom} {selected.nom}
+                      {selected.nom_prenom}
                     </h2>
                     <div className="mt-2">
                       <StatusBadge statut={selected.statut} />
@@ -751,13 +773,13 @@ export default function CommandesClient({
                           value={selected.categorie.nom}
                         />
                       )}
-                      <EditableField
-                        icon={Package}
-                        label="Modèle"
-                        value={String(draft.option_label ?? "")}
-                        onChange={(v) => updateDraft("option_label", v)}
-                        placeholder="Modèle ou option..."
-                      />
+                      {selected.option?.label && (
+                        <InfoRow
+                          icon={Package}
+                          label="Modèle"
+                          value={selected.option.label}
+                        />
+                      )}
                       <EditableField
                         icon={Ruler}
                         label="Dimensions"
@@ -784,10 +806,10 @@ export default function CommandesClient({
                       className="rounded-2xl overflow-hidden"
                       style={{ border: "1px solid rgba(197,160,89,0.12)" }}
                     >
-                      {selected.prix_revient != null && (
+                      {selected.cout_revient != null && (
                         <PriceRow
                           label="Prix de revient"
-                          value={formatMontant(selected.prix_revient)}
+                          value={formatMontant(selected.cout_revient)}
                         />
                       )}
                       {(selected.tarif_livraison ?? 0) > 0 && (
@@ -815,13 +837,13 @@ export default function CommandesClient({
                     <div className="flex gap-2">
                       {LIVRAISON_OPTIONS.map((opt) => {
                         const isOpt =
-                          (draft.mode_livraison ?? "aucune") === opt.value;
+                          (draft.type_livraison ?? "none") === opt.value;
                         return (
                           <button
                             key={opt.value}
                             type="button"
                             onClick={() =>
-                              updateDraft("mode_livraison", opt.value)
+                              updateDraft("type_livraison", opt.value)
                             }
                             className="flex-1 text-xs font-semibold py-2 rounded-xl transition-all duration-150"
                             style={{
@@ -838,7 +860,7 @@ export default function CommandesClient({
                       })}
                     </div>
                     <AnimatePresence>
-                      {(draft.mode_livraison ?? "aucune") === "bureau" && (
+                      {(draft.type_livraison ?? "none") === "bureau" && (
                         <motion.div
                           key="bureau-fields"
                           initial={{ opacity: 0, height: 0 }}
@@ -885,7 +907,7 @@ export default function CommandesClient({
                           </div>
                         </motion.div>
                       )}
-                      {(draft.mode_livraison ?? "aucune") === "vehicule" && (
+                      {(draft.type_livraison ?? "none") === "vehicule" && (
                         <motion.div
                           key="vehicule-prix"
                           initial={{ opacity: 0, height: 0 }}
@@ -1082,7 +1104,7 @@ export default function CommandesClient({
               <div
                 style={{ fontSize: "15px", fontWeight: 700, color: "#1E293B" }}
               >
-                {selected.prenom} {selected.nom}
+                {selected.nom_prenom}
               </div>
               <div
                 style={{ fontSize: "12px", color: "#64748B", marginTop: "3px" }}
@@ -1119,7 +1141,7 @@ export default function CommandesClient({
                   {selected.categorie.nom}
                 </div>
               )}
-              {selected.option_label && (
+              {selected.option?.label && (
                 <div
                   style={{
                     fontSize: "14px",
@@ -1128,7 +1150,7 @@ export default function CommandesClient({
                     marginTop: "2px",
                   }}
                 >
-                  {selected.option_label}
+                  {selected.option.label}
                 </div>
               )}
               {selected.mesure && (
@@ -1175,7 +1197,7 @@ export default function CommandesClient({
             >
               Tarification
             </div>
-            {selected.prix_revient != null && selected.prix_revient > 0 && (
+            {selected.cout_revient != null && selected.cout_revient > 0 && (
               <div
                 style={{
                   display: "flex",
@@ -1186,7 +1208,7 @@ export default function CommandesClient({
                 }}
               >
                 <span>Prix de revient</span>
-                <span>{formatMontant(selected.prix_revient)}</span>
+                <span>{formatMontant(selected.cout_revient!)}</span>
               </div>
             )}
             {(selected.tarif_livraison ?? 0) > 0 && (
@@ -1201,9 +1223,9 @@ export default function CommandesClient({
               >
                 <span>
                   Frais de livraison
-                  {selected.mode_livraison &&
-                  selected.mode_livraison !== "aucune"
-                    ? ` (${selected.mode_livraison})`
+                  {selected.type_livraison &&
+                  selected.type_livraison !== "none"
+                    ? ` (${selected.type_livraison})`
                     : ""}
                 </span>
                 <span>{formatMontant(selected.tarif_livraison!)}</span>
@@ -1275,12 +1297,8 @@ export default function CommandesClient({
 
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
-        title={
-          deleteTargetRow
-            ? `${deleteTargetRow.prenom} ${deleteTargetRow.nom}`
-            : ""
-        }
-        description="Cette commande sera retirée de la liste. L'action est locale et ne supprime pas les données serveur."
+        title={deleteTargetRow?.nom_prenom ?? ""}
+        description="Cette commande sera définitivement supprimée. Cette action est irréversible."
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
       />

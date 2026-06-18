@@ -51,7 +51,7 @@ export default function CommandeDetailClient({ commande, categories }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card space-y-3">
           <h3 className="font-semibold text-neutral-800 border-b border-neutral-100 pb-2">Client</h3>
-          <Row label="Nom" value={`${commande.prenom} ${commande.nom}`} />
+          <Row label="Nom & Prénom" value={commande.nom_prenom} />
           <Row label="Téléphone" value={commande.telephone} />
           <Row label="Adresse" value={commande.adresse} />
         </div>
