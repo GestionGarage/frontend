@@ -143,7 +143,7 @@ export default function VehiculeDepenseForm({ defaultValues }: Props) {
               min="0.01"
               className="input-base"
               placeholder="0"
-              {...register('montant', { valueAsNumber: true })}
+              {...register('montant', { setValueAs: (v: string) => (v === '' ? 0 : Number(v)) })}
             />
             {errors.montant && <p className="text-danger text-xs mt-1.5 font-medium">{errors.montant.message}</p>}
           </div>
@@ -161,9 +161,9 @@ export default function VehiculeDepenseForm({ defaultValues }: Props) {
             rows={3}
             className="input-base resize-none"
             placeholder="Détails, prestataire, référence…"
-            {...register('description')}
+            {...register('notes')}
           />
-          {errors.description && <p className="text-danger text-xs mt-1.5 font-medium">{errors.description.message}</p>}
+          {errors.notes && <p className="text-danger text-xs mt-1.5 font-medium">{errors.notes.message}</p>}
         </div>
       </div>
 

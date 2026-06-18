@@ -23,7 +23,7 @@ export default async function EditCategoriePage({ params }: PageProps) {
       <Header
         title={`Modifier — ${categorie.nom}`}
         breadcrumb={[
-          { label: 'Catégories', href: '/categories' },
+          { label: 'Catégories', href: '/admin/categories' },
           { label: categorie.nom },
         ]}
       />

@@ -4,43 +4,21 @@ export const TypeMateriauEnum = z.enum([
   'metal',
   'bois',
   'peinture',
-  'pinceau',
-  'visserie',
-  'soudure',
   'autre',
 ]);
 
-export const UniteEnum = z.enum(['unite', 'kg', 'm', 'm2', 'litre', 'piece']);
-
 export type TypeMateriau = z.infer<typeof TypeMateriauEnum>;
-export type Unite = z.infer<typeof UniteEnum>;
 
 export const TYPE_MATERIAU_LABELS: Record<TypeMateriau, string> = {
   metal: 'Métal / Fer',
   bois: 'Bois / MDF',
   peinture: 'Peinture',
-  pinceau: 'Pinceaux & Outils de peinture',
-  visserie: 'Visserie & Boulonnerie',
-  soudure: 'Matériel de soudure',
   autre: 'Autre',
-};
-
-export const UNITE_LABELS: Record<Unite, string> = {
-  unite: 'Unité',
-  kg: 'Kilogramme (kg)',
-  m: 'Mètre (m)',
-  m2: 'Mètre carré (m²)',
-  litre: 'Litre',
-  piece: 'Pièce',
 };
 
 export const createAchatSchema = z.object({
   type_materiau: TypeMateriauEnum,
-  designation: z.string().min(1, 'Désignation requise').max(200),
-  quantite: z.number().positive('Quantité requise'),
-  unite: UniteEnum,
-  prix_unitaire: z.number().positive('Prix unitaire requis'),
-  fournisseur: z.string().max(150).optional().nullable(),
+  prix_total: z.number().min(0, 'Prix requis'),
   date_achat: z.string().date('Date invalide'),
   notes: z.string().max(1000).optional().nullable(),
 });
@@ -64,12 +42,7 @@ export type AchatQueryDto = z.infer<typeof achatQuerySchema>;
 export interface AchatEntity {
   id: string;
   type_materiau: TypeMateriau;
-  designation: string;
-  quantite: number;
-  unite: Unite;
-  prix_unitaire: number;
-  prix_total: number;
-  fournisseur: string | null;
+  prix_total: number | null;
   date_achat: string;
   notes: string | null;
   created_at: string;

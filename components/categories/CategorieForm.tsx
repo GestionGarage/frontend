@@ -101,7 +101,9 @@ export default function CategorieForm({ defaultValues }: Props) {
     try {
       let savedId: string;
       if (isEdit && defaultValues?.id) {
-        await updateCategorie(defaultValues.id, data);
+        // Strip `options` — UpdateCategorieDto omits it; sending it causes 400 (forbidNonWhitelisted)
+        const { options: _options, ...updatePayload } = data;
+        await updateCategorie(defaultValues.id, updatePayload);
         savedId = defaultValues.id;
       } else {
         const res = await createCategorie(data) as { data: { id: string } };

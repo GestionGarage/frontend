@@ -109,7 +109,7 @@ export default function AchatForm({ defaultValues }: Props) {
     resolver: zodResolver(achatUISchema),
     defaultValues: {
       date_achat: todayISO(),
-      prix_total: defaultValues?.prix_unitaire ?? undefined,
+      prix_total: defaultValues?.prix_total ?? undefined,
     },
   });
 
@@ -117,13 +117,9 @@ export default function AchatForm({ defaultValues }: Props) {
 
   const onSubmit = async (data: AchatUIForm) => {
     setServerError(null);
-    /* Transform UI form → CreateAchatDto: use prix_total as prix_unitaire with quantite=1 */
     const payload: CreateAchatDto = {
       type_materiau: data.type_materiau,
-      designation:   'Achat',
-      quantite:      1,
-      unite:         'unite',
-      prix_unitaire: data.prix_total,
+      prix_total:    data.prix_total,
       date_achat:    data.date_achat,
       notes:         data.notes ?? undefined,
     };
@@ -165,7 +161,7 @@ export default function AchatForm({ defaultValues }: Props) {
             min="0.01"
             className="input-base"
             placeholder="0"
-            {...register('prix_total', { valueAsNumber: true })}
+            {...register('prix_total', { setValueAs: (v: string) => (v === '' ? 0 : Number(v)) })}
           />
           {errors.prix_total && <p className="text-danger text-xs mt-1.5 font-medium">{errors.prix_total.message}</p>}
         </div>

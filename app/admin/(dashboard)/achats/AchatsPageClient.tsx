@@ -262,7 +262,7 @@ export default function AchatsPageClient() {
                       </span>
                     </td>
                     <td className="table-td text-right font-bold tabular-nums" style={{ color: '#C5A059' }}>
-                      {formatMontant(a.prix_total)}
+                      {formatMontant(a.prix_total ?? 0)}
                     </td>
                     <td className="px-3 py-2.5">
                       <button
@@ -283,7 +283,7 @@ export default function AchatsPageClient() {
 
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
-        title={deleteTargetAchat?.designation ?? ''}
+        title={deleteTargetAchat ? (TYPE_MATERIAU_CONFIG[deleteTargetAchat.type_materiau]?.label ?? deleteTargetAchat.type_materiau) : ''}
         description="Cet achat sera définitivement supprimé. Cette action ne peut pas être annulée."
         onCancel={() => setDeleteTarget(null)}
         onConfirm={handleDeleteConfirm}

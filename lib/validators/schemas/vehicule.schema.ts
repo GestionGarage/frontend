@@ -1,34 +1,24 @@
 import { z } from 'zod';
 
 export const TypeDepenseVehiculeEnum = z.enum([
-  'vidange',
   'carburant',
   'reparation',
-  'assurance',
-  'controle_technique',
-  'lavage',
   'autre',
 ]);
 
 export type TypeDepenseVehicule = z.infer<typeof TypeDepenseVehiculeEnum>;
 
 export const TYPE_DEPENSE_LABELS: Record<TypeDepenseVehicule, string> = {
-  vidange: 'Vidange',
   carburant: 'Carburant / Essence',
   reparation: 'Réparation',
-  assurance: 'Assurance',
-  controle_technique: 'Contrôle technique',
-  lavage: 'Lavage',
   autre: 'Autre',
 };
 
 export const createVehiculeDepenseSchema = z.object({
   type_depense: TypeDepenseVehiculeEnum,
   montant: z.number().positive('Montant requis'),
-  description: z.string().max(500).optional(),
+  notes: z.string().max(500).optional().nullable(),
   date_depense: z.string().date('Date invalide'),
-  kilometrage: z.number().int().positive().optional().nullable(),
-  prestataire: z.string().max(150).optional().nullable(),
 });
 
 export const updateVehiculeDepenseSchema = createVehiculeDepenseSchema.partial();
@@ -51,9 +41,7 @@ export interface VehiculeDepenseEntity {
   id: string;
   type_depense: TypeDepenseVehicule;
   montant: number;
-  description: string | null;
+  notes: string | null;
   date_depense: string;
-  kilometrage: number | null;
-  prestataire: string | null;
   created_at: string;
 }

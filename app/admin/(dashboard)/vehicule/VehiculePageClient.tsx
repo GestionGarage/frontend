@@ -253,8 +253,8 @@ export default function VehiculePageClient() {
                       >
                         {TYPE_DEPENSE_CONFIG[d.type_depense]?.label ?? d.type_depense}
                       </span>
-                      {d.description && (
-                        <p className="text-xs text-neutral-400 mt-0.5 max-w-xs truncate">{d.description}</p>
+                      {d.notes && (
+                        <p className="text-xs text-neutral-400 mt-0.5 max-w-xs truncate">{d.notes}</p>
                       )}
                     </td>
                     <td className="table-td text-right font-bold tabular-nums" style={{ color: '#C5A059' }}>
