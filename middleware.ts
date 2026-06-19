@@ -1,26 +1,38 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-// Gate all /admin/* routes except the login page itself.
-// The "admin_session" cookie is a Vercel-domain httpOnly cookie set by
-// POST /api/auth/session right after a successful backend login.  The
-// backend's own access_token cookie is scoped to Render's domain and
-// cannot be read here, hence this two-cookie approach.
+const ADMIN_LOGIN = '/admin/login';
+
+// "admin_session" is a Vercel-domain httpOnly cookie set by POST /api/auth/session
+// right after a successful backend login.  The backend's own "access_token" cookie
+// is scoped to Render's domain and is invisible here (different origin).
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // The login page is always public — never redirect it
-  if (pathname.startsWith('/admin/login')) return NextResponse.next();
+  // Never intercept Next.js internals, static assets, API routes, or the boutique
+  const isPublic =
+    pathname === ADMIN_LOGIN ||
+    pathname.startsWith('/boutique') ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.');
 
-  if (!request.cookies.has('admin_session')) {
-    const loginUrl = new URL('/admin/login', request.url);
+  const hasSession = request.cookies.has('admin_session');
+
+  // Unauthenticated user hitting a protected route → /admin/login
+  if (!isPublic && !hasSession) {
+    const loginUrl = new URL(ADMIN_LOGIN, request.url);
+    loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Already-authenticated user landing on /admin/login → /admin/dashboard
+  if (hasSession && pathname === ADMIN_LOGIN) {
+    return NextResponse.redirect(new URL('/admin/dashboard', request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  // Run only on /admin routes; /api, /_next, static assets are skipped
-  matcher: ['/admin/:path*'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
