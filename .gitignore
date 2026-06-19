@@ -5,8 +5,6 @@ out/
 .next/
 .env
 .env.local
-.env.production
-.env.development
 .env*.local
 *.log
 npm-debug.log*
@@ -14,3 +12,4 @@ npm-debug.log*
 coverage/
 .turbo/
 *.tsbuildinfo
+.env.example

@@ -56,7 +56,7 @@ export default function MobileNav() {
           </div>
           <div className="leading-none">
             <p className="font-bold text-sm tracking-wide" style={{ color: '#1E293B' }}>MOBILE ART</p>
-            <p className="text-xs tracking-wider" style={{ color: '#94A3B8' }}>ERP</p>
+            <p className="text-xs tracking-wider" style={{ color: '#94A3B8' }}>SIHAMDA FERRONNIER</p>
           </div>
         </div>
 

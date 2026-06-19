@@ -41,6 +41,9 @@ function getXTick(period: string | undefined, value: string): string {
     if (period === 'month') {
       return `S${Math.ceil(d.getUTCDate() / 7)}`;
     }
+    if (period === '6months') {
+      return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+    }
     return d.toLocaleDateString('fr-FR', { month: 'short' });
   } catch {
     return '';
@@ -90,6 +93,36 @@ function aggregateToWeeks(data: DataPoint[]): DataPoint[] {
   return Array.from(weekMap.entries())
     .sort(([a], [b]) => a - b)
     .map(([, d]) => d);
+}
+
+function fill6MonthsSkeleton(data: DataPoint[]): DataPoint[] {
+  const now = new Date();
+  const lookup = new Map<string, DataPoint>();
+  for (const d of data) {
+    const date = new Date(d.periode);
+    const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
+    lookup.set(key, d);
+  }
+  return Array.from({ length: 6 }, (_, i) => {
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5 + i, 1));
+    const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
+    return lookup.get(key) ?? { periode: date.toISOString(), revenus: 0, depenses: 0, benefice: 0 };
+  });
+}
+
+function fillYearSkeleton(data: DataPoint[]): DataPoint[] {
+  const now = new Date();
+  const lookup = new Map<string, DataPoint>();
+  for (const d of data) {
+    const date = new Date(d.periode);
+    const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
+    lookup.set(key, d);
+  }
+  return Array.from({ length: 12 }, (_, i) => {
+    const date = new Date(Date.UTC(now.getUTCFullYear(), i, 1));
+    const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
+    return lookup.get(key) ?? { periode: date.toISOString(), revenus: 0, depenses: 0, benefice: 0 };
+  });
 }
 
 const CustomTooltip = ({ active, payload, label }: Record<string, unknown>) => {
@@ -142,6 +175,8 @@ export default function RevenueLineChart({ data, period }: { data: DataPoint[]; 
   let processedData = data;
   if (period === 'week') processedData = buildWeekSkeleton(data);
   else if (period === 'month') processedData = aggregateToWeeks(data);
+  else if (period === '6months') processedData = fill6MonthsSkeleton(data);
+  else if (period === 'year') processedData = fillYearSkeleton(data);
 
   const chartData: DataPoint[] = [
     { periode: ORIGIN_KEY, revenus: 0, depenses: 0, benefice: 0 },

@@ -264,7 +264,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
     formState: { errors, isSubmitting, isSubmitted },
   } = useForm<CreateCommandeDto>({
     resolver: zodResolver(createCommandeSchema),
-    mode: 'onSubmit',
+    mode: 'onTouched',
     defaultValues: {
       nom_prenom: '',
       telephone: '',
@@ -280,6 +280,13 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
   });
 
   const tarifLivraison = watch('tarif_livraison') ?? 0;
+
+  /* Button gating: disabled when products missing, livraison not set, or total is 0 */
+  const canSubmit =
+    !isSubmitting &&
+    typeLivraison !== 'none' &&
+    totalPrixVente > 0 &&
+    orderLines.every((l) => !!l.produitId);
 
   /* ── Pre-load products for the initial category when editing an existing order ── */
   useEffect(() => {
@@ -470,6 +477,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
         type_livraison: typeLivraison,
         bureau_nom: typeLivraison === 'bureau' ? (bureauNom.trim() || undefined) : undefined,
         cout_revient: totalPrixRevient > 0 ? totalPrixRevient : undefined,
+        cout_main_oeuvre: totalMainOeuvre > 0 ? totalMainOeuvre : undefined,
         notes: noteParts.join('\n') || undefined,
       };
 
@@ -534,7 +542,10 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
             style={errors.telephone ? { borderColor: '#DC2626', boxShadow: '0 0 0 3px rgba(220,38,38,0.08)' } : undefined}
             {...register('telephone')}
             onChange={(e) => {
-              e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+              let v = e.target.value.replace(/\D/g, '');
+              if (v.length > 0 && v[0] !== '0') v = ('0' + v).slice(0, 10);
+              else v = v.slice(0, 10);
+              e.target.value = v;
               void register('telephone').onChange(e);
             }}
           />
@@ -1049,7 +1060,20 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
       )}
 
       <div className="flex gap-3 flex-wrap">
-        <button type="submit" disabled={isSubmitting} className="btn-primary">
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          title={
+            typeLivraison === 'none'
+              ? 'Sélectionnez un mode de livraison'
+              : totalPrixVente === 0
+              ? 'Ajoutez au moins un produit avec un prix'
+              : orderLines.some((l) => !l.produitId)
+              ? 'Chaque ligne doit avoir un produit sélectionné'
+              : undefined
+          }
+        >
           {isSubmitting ? 'Enregistrement…' : isEdit ? 'Modifier la commande' : 'Créer la commande'}
         </button>
         <button

@@ -42,6 +42,7 @@ export interface AnalyticsSummary {
   depenses_totales: number;
   cout_matieres: number;
   depenses_vehicule: number;
+  cout_main_oeuvre?: number;
   benefice_net: number;
   marge_nette_pct: number;
   nb_commandes: number;

@@ -67,6 +67,12 @@ export default function CommandeDetailClient({ commande, categories }: Props) {
         <div className="card space-y-3">
           <h3 className="font-semibold text-neutral-800 border-b border-neutral-100 pb-2">Financier</h3>
           <Row label="Prix total" value={formatMontant(commande.prix_total ?? 0)} bold />
+          {commande.cout_revient != null && (
+            <Row label="Coût revient" value={formatMontant(commande.cout_revient)} />
+          )}
+          {commande.cout_main_oeuvre != null && (
+            <Row label="Main d'œuvre" value={formatMontant(commande.cout_main_oeuvre)} />
+          )}
           <Row label="Tarif livraison" value={formatMontant(commande.tarif_livraison ?? 0)} />
           <Row label="Source" value={commande.source === 'boutique' ? 'Boutique en ligne' : 'Admin'} />
         </div>

@@ -23,6 +23,8 @@ export const createCommandeSchema = z.object({
   mesure: z.string().max(200).optional(),
   couleur: z.string().max(100).optional(),
   tarif_livraison: z.number().min(0).default(0),
+  cout_revient: z.number().min(0).optional(),
+  cout_main_oeuvre: z.number().min(0).optional(),
   prix_total: z.number().positive('Prix total requis'),
   statut: CommandeStatutEnum.default('en_attente'),
   source: CommandeSourceEnum.default('admin'),
@@ -69,6 +71,7 @@ export interface CommandeEntity {
   bureau_nom: string | null;
   tarif_livraison: number;
   cout_revient: number | null;
+  cout_main_oeuvre: number | null;
   prix_total: number;
   statut: CommandeStatut;
   source: CommandeSource;

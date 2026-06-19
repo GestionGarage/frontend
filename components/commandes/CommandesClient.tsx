@@ -329,7 +329,7 @@ export default function CommandesClient({
         <PremiumKPICard
           label="Bénéfice Net"
           value={formatMontant(kpi.totalLivraison)}
-          sub="tarif livraison"
+          sub="vente − revient − M.O."
           icon={BarChart3}
           color="#A8863A"
           iconBg="rgba(168,134,58,0.10)"
@@ -692,9 +692,12 @@ export default function CommandesClient({
                               <div key={i}>
                                 {i > 0 && (
                                   <div
-                                    className="h-px my-4"
-                                    style={{ backgroundColor: "rgba(197,160,89,0.10)" }}
-                                  />
+                                    className="my-4 flex items-center gap-3"
+                                  >
+                                    <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(197,160,89,0.35)' }} />
+                                    <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#C5A059' }}>+</span>
+                                    <div className="flex-1 h-px" style={{ backgroundColor: 'rgba(197,160,89,0.35)' }} />
+                                  </div>
                                 )}
                                 <div className="space-y-3">
                                   <div className="flex items-center gap-2">
