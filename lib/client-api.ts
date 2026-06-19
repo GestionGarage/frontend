@@ -2,6 +2,19 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/admin';
 
+// Derive the root origin for health checks (strips the /admin path segment)
+const BACKEND_ORIGIN = API_URL.replace(/\/admin$/, '');
+
+// Render free-tier cold starts can take up to ~50 s — use 65 s in prod.
+// Local dev uses 15 s to avoid long hangs during development.
+const REQUEST_TIMEOUT_MS = API_URL.includes('localhost') ? 15_000 : 65_000;
+
+// After this many ms with no server response, the login form shows a
+// "server is waking up" notice to reassure the user.
+export const SLOW_REQUEST_THRESHOLD_MS = 5_000;
+
+// ── Error class ────────────────────────────────────────────────────
+
 export class ClientApiError extends Error {
   constructor(
     public readonly statusCode: number,
@@ -13,32 +26,75 @@ export class ClientApiError extends Error {
   }
 }
 
+// ── Core fetch wrapper ─────────────────────────────────────────────
+
 async function clientFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  if (res.status === 204) return undefined as T;
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      ...options,
+      signal: controller.signal,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    });
 
-  const body = (await res.json()) as Record<string, unknown>;
+    if (res.status === 204) return undefined as T;
 
-  if (!res.ok) {
-    throw new ClientApiError(
-      res.status,
-      (body.message as string) ?? 'Erreur',
-      body.errors as Array<{ field: string; message: string }> | undefined,
-    );
+    const body = (await res.json()) as Record<string, unknown>;
+
+    if (!res.ok) {
+      throw new ClientApiError(
+        res.status,
+        (body.message as string) ?? 'Erreur',
+        body.errors as Array<{ field: string; message: string }> | undefined,
+      );
+    }
+
+    return body as T;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ClientApiError(
+        0,
+        'Le serveur met trop de temps à répondre. Veuillez réessayer dans quelques secondes.',
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return body as T;
 }
 
-// Auth — controller is mounted at root so paths are /login, /logout, /me
+// ── Warm-up ping ────────────────────────────────────────────────────
+
+/**
+ * Fires a lightweight GET /health request so Render's free-tier instance
+ * has time to boot before the user clicks "Se connecter".
+ * Called on login page mount — response is ignored, only timing matters.
+ */
+export async function pingBackend(): Promise<boolean> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 65_000);
+  try {
+    await fetch(`${BACKEND_ORIGIN}/health`, {
+      method: 'GET',
+      credentials: 'omit',
+      signal: controller.signal,
+    });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// ── Auth ────────────────────────────────────────────────────────────
+
 export const login = (data: { username: string; password: string }) =>
   clientFetch('/login', { method: 'POST', body: JSON.stringify(data) });
 
@@ -48,7 +104,8 @@ export const logout = () =>
 export const getMe = () =>
   clientFetch('/me');
 
-// Commandes
+// ── Commandes ───────────────────────────────────────────────────────
+
 export const createCommande = (data: unknown) =>
   clientFetch('/commandes', { method: 'POST', body: JSON.stringify(data) });
 
@@ -61,7 +118,8 @@ export const updateCommandeStatut = (id: string, statut: string) =>
 export const deleteCommande = (id: string) =>
   clientFetch(`/commandes/${id}`, { method: 'DELETE' });
 
-// Vehicule
+// ── Vehicule ────────────────────────────────────────────────────────
+
 export const createVehiculeDepense = (data: unknown) =>
   clientFetch('/vehicule/depenses', { method: 'POST', body: JSON.stringify(data) });
 
@@ -71,7 +129,8 @@ export const updateVehiculeDepense = (id: string, data: unknown) =>
 export const deleteVehiculeDepense = (id: string) =>
   clientFetch(`/vehicule/depenses/${id}`, { method: 'DELETE' });
 
-// Achats
+// ── Achats ──────────────────────────────────────────────────────────
+
 export const createAchat = (data: unknown) =>
   clientFetch('/achats', { method: 'POST', body: JSON.stringify(data) });
 
@@ -81,7 +140,8 @@ export const updateAchat = (id: string, data: unknown) =>
 export const deleteAchat = (id: string) =>
   clientFetch(`/achats/${id}`, { method: 'DELETE' });
 
-// Categories
+// ── Categories ──────────────────────────────────────────────────────
+
 export const createCategorie = (data: unknown) =>
   clientFetch('/categories', { method: 'POST', body: JSON.stringify(data) });
 
@@ -103,16 +163,31 @@ export const deleteCategorieOption = (categorieId: string, optionId: string) =>
 export const uploadCategorieImage = async (categorieId: string, file: File) => {
   const formData = new FormData();
   formData.append('image', file);
-  const res = await fetch(`${API_URL}/categories/${categorieId}/image`, {
-    method: 'POST',
-    credentials: 'include',
-    body: formData,
-  });
-  if (!res.ok) throw new ClientApiError(res.status, 'Échec upload');
-  return res.json();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 120_000);
+
+  try {
+    const res = await fetch(`${API_URL}/categories/${categorieId}/image`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new ClientApiError(res.status, 'Échec upload');
+    return res.json();
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ClientApiError(0, 'L\'upload a expiré. Vérifiez votre connexion et réessayez.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 };
 
-// Produits
+// ── Produits ────────────────────────────────────────────────────────
+
 export interface CatalogueProduit {
   id: string;
   nom: string;
@@ -135,6 +210,7 @@ export const updateProduit = (id: string, data: unknown) =>
 export const deleteProduit = (id: string) =>
   clientFetch(`/produits/${id}`, { method: 'DELETE' });
 
-// Phase 2 — Public boutique
+// ── Phase 2 — Public boutique ────────────────────────────────────────
+
 export const createPublicCommande = (data: unknown) =>
   clientFetch('/commandes/public', { method: 'POST', body: JSON.stringify(data) });

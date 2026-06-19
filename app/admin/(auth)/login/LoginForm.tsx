@@ -1,16 +1,33 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginDto } from '@gestion-garage/shared-validators';
-import { login } from '@/lib/client-api';
-import { User, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
+import { login, pingBackend, SLOW_REQUEST_THRESHOLD_MS } from '@/lib/client-api';
+import { User, Lock, Eye, EyeOff, AlertCircle, Loader2, Wifi } from 'lucide-react';
 
 export default function LoginForm() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
+  const wakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Show the "server waking up" banner if the backend hasn't responded within the threshold.
+    // This covers Render's free-tier cold start (~50 s) so the user isn't left in silence.
+    wakeTimerRef.current = setTimeout(() => setIsWakingUp(true), SLOW_REQUEST_THRESHOLD_MS);
+
+    pingBackend().then(() => {
+      if (wakeTimerRef.current) clearTimeout(wakeTimerRef.current);
+      setIsWakingUp(false);
+    });
+
+    return () => {
+      if (wakeTimerRef.current) clearTimeout(wakeTimerRef.current);
+    };
+  }, []);
 
   const {
     register,
@@ -33,6 +50,24 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Server wake-up notice — appears only when Render cold-start exceeds 5 s */}
+      {isWakingUp && (
+        <div
+          className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-xs"
+          style={{
+            backgroundColor: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.2)',
+            color: '#FCD34D',
+          }}
+        >
+          <Wifi size={13} className="flex-shrink-0 mt-0.5 animate-pulse" />
+          <span>
+            Le serveur se réveille, cela peut prendre jusqu'à 1 minute lors de la première
+            connexion…
+          </span>
+        </div>
+      )}
+
       {/* Username */}
       <div>
         <label className="label-base" htmlFor="username">Identifiant</label>
@@ -95,7 +130,11 @@ export default function LoginForm() {
       {serverError && (
         <div
           className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-xs"
-          style={{ backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#FCA5A5' }}
+          style={{
+            backgroundColor: 'rgba(239,68,68,0.08)',
+            border: '1px solid rgba(239,68,68,0.2)',
+            color: '#FCA5A5',
+          }}
         >
           <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />
           {serverError}
@@ -111,7 +150,7 @@ export default function LoginForm() {
         {isSubmitting ? (
           <>
             <Loader2 size={14} className="animate-spin" />
-            Connexion en cours...
+            {isWakingUp ? 'Démarrage du serveur…' : 'Connexion en cours…'}
           </>
         ) : (
           'Se connecter'
