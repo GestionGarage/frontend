@@ -96,10 +96,18 @@ export async function pingBackend(): Promise<boolean> {
 // ── Auth ────────────────────────────────────────────────────────────
 
 export const login = (data: { username: string; password: string }) =>
-  clientFetch('/login', { method: 'POST', body: JSON.stringify(data) });
+  clientFetch<{ data: { access_token: string; expires_in: number; user: object } }>(
+    '/login', { method: 'POST', body: JSON.stringify(data) },
+  );
 
-export const logout = () =>
-  clientFetch('/logout', { method: 'POST' });
+// Clears both the Render-domain JWT cookie (via the backend) and the
+// Vercel-domain session cookie (via the Next.js API route) in parallel.
+export const logout = async (): Promise<void> => {
+  await Promise.allSettled([
+    clientFetch('/logout', { method: 'POST' }),
+    fetch('/api/auth/session', { method: 'DELETE' }),
+  ]);
+};
 
 export const getMe = () =>
   clientFetch('/me');

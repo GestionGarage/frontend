@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
 
+// API_URL is a server-only env var (no NEXT_PUBLIC_ prefix).
+// Must be set in Vercel dashboard → Settings → Environment Variables.
 const API_URL = process.env.API_URL ?? 'http://localhost:3001/admin';
 
 export class ApiError extends Error {
@@ -12,15 +14,21 @@ export class ApiError extends Error {
   }
 }
 
+// Reads the JWT stored in the Vercel-domain "admin_session" cookie by
+// POST /api/auth/session after login, and forwards it to the backend as
+// "Cookie: access_token=<jwt>".  This is the only way SSR Server Components
+// can authenticate with the backend: the backend's own httpOnly cookie is
+// scoped to Render's domain and is NOT forwarded to mobile-art.vercel.app
+// requests, making cookies() from next/headers useless for that cookie.
 async function serverFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
+  const jwt = cookieStore.get('admin_session')?.value;
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      ...(jwt ? { Cookie: `access_token=${jwt}` } : {}),
       ...options?.headers,
     },
     cache: 'no-store',
@@ -34,6 +42,8 @@ async function serverFetch<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
+    // Log to Vercel function logs for easier remote debugging
+    console.error(`[SSR] ${res.status} ${res.statusText} — ${API_URL}${path}`);
     throw new ApiError(res.status, (body.message as string) ?? 'Erreur serveur');
   }
 

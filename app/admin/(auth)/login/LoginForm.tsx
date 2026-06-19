@@ -15,15 +15,13 @@ export default function LoginForm() {
   const wakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Show the "server waking up" banner if the backend hasn't responded within the threshold.
-    // This covers Render's free-tier cold start (~50 s) so the user isn't left in silence.
+    // Show the "server waking up" banner if the backend hasn't responded within
+    // the threshold.  This covers Render's free-tier cold start (~50 s).
     wakeTimerRef.current = setTimeout(() => setIsWakingUp(true), SLOW_REQUEST_THRESHOLD_MS);
-
     pingBackend().then(() => {
       if (wakeTimerRef.current) clearTimeout(wakeTimerRef.current);
       setIsWakingUp(false);
     });
-
     return () => {
       if (wakeTimerRef.current) clearTimeout(wakeTimerRef.current);
     };
@@ -33,24 +31,42 @@ export default function LoginForm() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginDto>({
-    resolver: zodResolver(loginSchema),
-  });
+  } = useForm<LoginDto>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = async (data: LoginDto) => {
     setServerError(null);
     try {
-      await login(data);
+      // 1. Authenticate with the Render backend — sets a Render-domain httpOnly cookie
+      const response = await login(data) as { data?: { access_token?: string } };
+      const token = response?.data?.access_token;
+
+      if (!token) {
+        // Should not happen if the backend behaves correctly
+        throw new Error('Réponse du serveur invalide — token manquant');
+      }
+
+      // 2. Store the JWT in a Vercel-domain cookie so the Next.js middleware
+      //    can protect /admin/* routes and SSR components can forward the token.
+      const sessionRes = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      if (!sessionRes.ok) {
+        throw new Error('Échec de l\'initialisation de la session');
+      }
+
+      // 3. Navigate to the dashboard — middleware now lets us through
       router.push('/admin/dashboard');
-      router.refresh();
     } catch (err) {
+      console.error('[Login] Error:', err);
       setServerError(err instanceof Error ? err.message : 'Identifiants incorrects');
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* Server wake-up notice — appears only when Render cold-start exceeds 5 s */}
+      {/* Server wake-up notice — appears only when Render cold-start exceeds threshold */}
       {isWakingUp && (
         <div
           className="flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-xs"
