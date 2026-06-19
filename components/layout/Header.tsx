@@ -11,7 +11,7 @@ interface HeaderProps {
 export default function Header({ title, action, breadcrumb }: HeaderProps) {
   return (
     <motion.div
-      className="mb-7"
+      className="mb-5 sm:mb-7"
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
@@ -36,9 +36,9 @@ export default function Header({ title, action, breadcrumb }: HeaderProps) {
         </nav>
       )}
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-headline text-2xl font-bold tracking-tight leading-none" style={{ color: '#1E293B' }}>
+          <h1 className="font-headline text-xl sm:text-2xl font-bold tracking-tight leading-none" style={{ color: '#1E293B' }}>
             {title}
           </h1>
           <div

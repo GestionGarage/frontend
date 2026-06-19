@@ -128,7 +128,7 @@ export default function PublicCommandeForm({ categories, preselectCategorieId }:
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="label-base">Couleur souhaitée</label>
             <input className="input-base" placeholder="Noir mat, Bronze..." {...register('couleur')} />

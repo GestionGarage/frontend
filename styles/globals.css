@@ -98,7 +98,7 @@
     box-shadow: 0 0 12px rgba(197, 160, 89, 0.15);
     @apply bg-primary hover:bg-primary-dark text-white font-semibold px-4 py-2 rounded-xl
            transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed
-           active:scale-[0.97];
+           active:scale-[0.97] min-h-[44px] touch-manipulation;
   }
 
   .btn-primary:hover:not(:disabled) {
@@ -109,7 +109,8 @@
     background-color: var(--bg-raised);
     border: 1px solid var(--border-default);
     @apply text-neutral-600 font-medium px-4 py-2 rounded-xl
-           transition-all duration-150 hover:text-neutral-800 active:scale-[0.97];
+           transition-all duration-150 hover:text-neutral-800 active:scale-[0.97]
+           min-h-[44px] touch-manipulation;
   }
 
   .btn-secondary:hover {
@@ -119,7 +120,7 @@
 
   .btn-danger {
     @apply bg-danger hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-xl
-           transition-all duration-150 active:scale-[0.97];
+           transition-all duration-150 active:scale-[0.97] min-h-[44px] touch-manipulation;
   }
 
   /* ─── Form Inputs ─── */
@@ -127,8 +128,9 @@
     background-color: var(--bg-card);
     border: 1px solid var(--border-default);
     @apply w-full rounded-xl px-3 py-2.5 text-neutral-800
-           transition-all duration-150
-           placeholder:text-neutral-400 disabled:opacity-40;
+           transition-all duration-150 min-h-[44px]
+           placeholder:text-neutral-400 disabled:opacity-40
+           touch-manipulation;
   }
 
   .input-base:hover {

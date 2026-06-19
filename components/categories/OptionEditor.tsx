@@ -116,8 +116,8 @@ export default function OptionEditor({ control, register, errors }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
 
-              <div className="flex-1 grid grid-cols-3 gap-2">
-                <div className="col-span-2">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="sm:col-span-2">
                   <input
                     className="input-base text-sm"
                     placeholder="Libellé option..."
@@ -127,7 +127,7 @@ export default function OptionEditor({ control, register, errors }: Props) {
                     <p className="text-danger text-xs mt-0.5">{optErrors.label.message as string}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <Controller
                     control={control}
                     name={`options.${index}.is_sur_mesure` as Path<CreateCategorieDto>}

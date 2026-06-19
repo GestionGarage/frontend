@@ -9,9 +9,9 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   return (
     <div className="min-h-screen bg-neutral-50">
       <header className="bg-white border-b border-neutral-200">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-bold text-neutral-900">Ferronnier Artisan</h1>
+            <h1 className="text-lg sm:text-xl font-bold text-neutral-900">Ferronnier Artisan</h1>
             <p className="text-xs text-neutral-500">Création sur mesure en fer forgé</p>
           </div>
           <a href="/boutique/commande" className="btn-primary text-sm">

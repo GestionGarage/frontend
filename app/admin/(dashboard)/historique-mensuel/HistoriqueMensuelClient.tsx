@@ -51,7 +51,7 @@ export default function HistoriqueMensuelClient({ rows, meta, currentPage }: Pro
         const totalBen = rows.reduce((s, r) => s + r.benefice, 0);
         const totalCmds = rows.reduce((s, r) => s + r.nb_commandes, 0);
         return (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             {[
               { label: 'CA (période)', value: formatMontant(totalCA), color: '#C5A059' },
               { label: 'Bénéfice net', value: formatMontant(totalBen), color: totalBen >= 0 ? '#A8863A' : '#64748B' },
@@ -63,7 +63,7 @@ export default function HistoriqueMensuelClient({ rows, meta, currentPage }: Pro
                 style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(197,160,89,0.12)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
               >
                 <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">{label}</p>
-                <p className="text-xl font-bold tabular-nums" style={{ color }}>{value}</p>
+                <p className="text-lg sm:text-xl font-bold tabular-nums" style={{ color }}>{value}</p>
               </div>
             ))}
           </div>
@@ -190,7 +190,7 @@ export default function HistoriqueMensuelClient({ rows, meta, currentPage }: Pro
               Précédent
             </Link>
 
-            <div className="flex items-center gap-1">
+            <div className="hidden sm:flex items-center gap-1">
               {Array.from({ length: Math.min(meta.totalPages, 7) }, (_, i) => {
                 const page = i + 1;
                 const isActive = page === currentPage;

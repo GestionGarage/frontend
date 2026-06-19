@@ -75,20 +75,20 @@ export default function PeriodSelector({
         <motion.div
           initial={{ opacity: 0, x: -6 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-2"
+          className="flex flex-wrap items-center gap-2"
         >
           <input
             type="date"
             value={dateDebut ?? ''}
             onChange={(e) => onCustomChange(e.target.value, dateFin ?? '')}
-            className="input-base w-36 py-1.5 text-xs"
+            className="input-base w-32 sm:w-36 py-1.5 text-xs"
           />
           <span className="text-neutral-400 text-xs">→</span>
           <input
             type="date"
             value={dateFin ?? ''}
             onChange={(e) => onCustomChange(dateDebut ?? '', e.target.value)}
-            className="input-base w-36 py-1.5 text-xs"
+            className="input-base w-32 sm:w-36 py-1.5 text-xs"
           />
         </motion.div>
       )}

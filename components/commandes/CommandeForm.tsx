@@ -38,7 +38,7 @@ const COULEUR_LINE_OPTIONS: Array<{ value: string; label: string; dot?: string }
 function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div
-      className="rounded-2xl p-6 space-y-4 shadow-card"
+      className="rounded-2xl p-4 sm:p-6 space-y-4 shadow-card"
       style={{ backgroundColor: '#FFFFFF', border: '1px solid rgba(197,160,89,0.12)' }}
     >
       <p
@@ -717,7 +717,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                 </div>
 
                 {/* Prices row */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                   <div>
                     <label className="label-base mb-1">Revient (DA)</label>
                     <input
@@ -888,7 +888,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
             <Truck size={11} />
             Option de livraison *
           </label>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             {(['none', 'bureau', 'vehicule'] as const).map((type) => {
               const LABELS = { none: 'Non définie', bureau: 'Bureau', vehicule: 'Véhicule propre' };
               const isActive = typeLivraison === type;
@@ -902,7 +902,7 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
                     setBureauNom('');
                     if (type !== 'none') setLivraisonError(false);
                   }}
-                  className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150"
+                  className="px-2 py-2 rounded-xl text-xs font-semibold transition-all duration-150 text-center"
                   style={{
                     backgroundColor: isActive
                       ? type === 'none' ? 'rgba(220,38,38,0.07)' : 'rgba(197,160,89,0.10)'

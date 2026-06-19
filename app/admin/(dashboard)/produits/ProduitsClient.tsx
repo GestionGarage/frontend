@@ -567,7 +567,7 @@ export default function ProduitsClient({
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                  <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-5">
                     <div>
                       <label className="label-base">Nom du produit *</label>
                       <input
@@ -650,7 +650,7 @@ export default function ProduitsClient({
                                       </button>
                                     )}
                                   </div>
-                                  <div className="grid grid-cols-3 gap-2">
+                                  <div className="grid grid-cols-3 gap-1.5">
                                     <div>
                                       <span className="text-xs text-neutral-400 font-medium mb-1 block">Revient (DA)</span>
                                       <input type="number" min="0" step="0.01" className="input-base text-sm py-1.5"
@@ -690,7 +690,7 @@ export default function ProduitsClient({
                         <motion.div key="global-prix"
                           initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             <div>
                               <label className="label-base">Revient (DA) *</label>
                               <input type="number" min="0" step="0.01" className="input-base"
@@ -703,7 +703,7 @@ export default function ProduitsClient({
                                 placeholder="0" value={form.prix_main_oeuvre}
                                 onChange={(e) => setForm((f) => ({ ...f, prix_main_oeuvre: e.target.value }))} />
                             </div>
-                            <div>
+                            <div className="col-span-2 sm:col-span-1">
                               <label className="label-base">Vente (DA) *</label>
                               <input type="number" min="0" step="0.01" className="input-base"
                                 placeholder="0" value={form.prix_vente}
