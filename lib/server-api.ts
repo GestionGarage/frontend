@@ -20,18 +20,24 @@ export class ApiError extends Error {
 // can authenticate with the backend: the backend's own httpOnly cookie is
 // scoped to Render's domain and is NOT forwarded to mobile-art.vercel.app
 // requests, making cookies() from next/headers useless for that cookie.
-async function serverFetch<T>(path: string, options?: RequestInit): Promise<T> {
+type NextCacheOptions = { revalidate?: number | false; tags?: string[] };
+
+async function serverFetch<T>(
+  path: string,
+  options?: RequestInit & { next?: NextCacheOptions },
+): Promise<T> {
+  const { next, ...restOptions } = options ?? {};
   const cookieStore = await cookies();
   const jwt = cookieStore.get('admin_session')?.value;
 
   const res = await fetch(`${API_URL}${path}`, {
-    ...options,
+    ...restOptions,
     headers: {
       'Content-Type': 'application/json',
       ...(jwt ? { Cookie: `access_token=${jwt}` } : {}),
-      ...options?.headers,
+      ...restOptions?.headers,
     },
-    cache: 'no-store',
+    ...(next ? { next } : { cache: 'no-store' }),
   });
 
   let body: Record<string, unknown>;
@@ -137,6 +143,15 @@ export async function getAchatsSummary(params: Record<string, string> = {}) {
 export async function getCategories(params: Record<string, string> = {}) {
   const qs = new URLSearchParams(params).toString();
   return serverFetch<{ data: unknown[]; meta: unknown }>(`/categories${qs ? `?${qs}` : ''}`);
+}
+
+// Cached variant used by dropdown/filter pickers — categories change rarely.
+export async function getCategoriesForDropdown(params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  return serverFetch<{ data: unknown[]; meta: unknown }>(
+    `/categories${qs ? `?${qs}` : ''}`,
+    { next: { revalidate: 300 } },
+  );
 }
 
 export async function getCategorie(id: string) {

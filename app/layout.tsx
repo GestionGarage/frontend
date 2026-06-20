@@ -1,4 +1,5 @@
 import '../styles/globals.css';
+import KeepAlive from '@/components/layout/KeepAlive';
 
 export const metadata= {
   title: { default: 'GestionGarage — SIHAMDA FERRONNIER', template: '%s | GestionGarage' },
@@ -13,7 +14,10 @@ export const metadata= {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <KeepAlive />
+        {children}
+      </body>
     </html>
   );
 }

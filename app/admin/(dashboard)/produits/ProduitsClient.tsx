@@ -416,7 +416,7 @@ export default function ProduitsClient({
                     key={p.id}
                     initial={{ opacity: 0, x: -6 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.025 }}
+                    transition={{ duration: 0.12, delay: Math.min(idx * 0.02, 0.08) }}
                     className="group hover:bg-neutral-50 transition-colors cursor-pointer"
                     style={{ borderTop: '1px solid rgba(197,160,89,0.07)' }}
                     onClick={() => setQuickView(p)}

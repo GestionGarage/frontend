@@ -153,7 +153,7 @@ export default function CategorieForm({ defaultValues }: Props) {
             ) : (
               <div>
                 <p className="text-neutral-400 text-sm">Cliquer pour sélectionner une image</p>
-                <p className="text-neutral-300 text-xs mt-1">WebP, JPEG, PNG — max 2 MB</p>
+                <p className="text-neutral-300 text-xs mt-1">WebP, JPEG, PNG — max 50 MB</p>
               </div>
             )}
           </div>
