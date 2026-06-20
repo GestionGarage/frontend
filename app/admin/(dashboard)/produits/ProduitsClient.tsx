@@ -351,6 +351,13 @@ export default function ProduitsClient({
     ? ((prixVente - prixBase - prixMO) / prixVente) * 100
     : null;
 
+  const canSubmit = !saving
+    && form.nom.trim().length > 0
+    && !!form.categorie_id
+    && (hasDimensions
+      ? dimensions.some((d) => d.label.trim() !== '')
+      : prixBase > 0 && prixVente > 0);
+
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < meta.totalPages;
 
@@ -743,7 +750,7 @@ export default function ProduitsClient({
                     <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary flex-1 text-sm">
                       Annuler
                     </button>
-                    <button type="submit" disabled={saving}
+                    <button type="submit" disabled={!canSubmit}
                       className="btn-primary flex-1 text-sm flex items-center justify-center gap-2">
                       {editId ? <Pencil size={13} strokeWidth={2.5} /> : <Plus size={13} strokeWidth={2.5} />}
                       {saving ? 'Enregistrement…' : editId ? 'Sauvegarder' : 'Ajouter le produit'}

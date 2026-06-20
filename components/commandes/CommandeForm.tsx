@@ -280,10 +280,16 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
   });
 
   const tarifLivraison = watch('tarif_livraison') ?? 0;
+  const nomPrenom      = watch('nom_prenom')       ?? '';
+  const telephone      = watch('telephone')         ?? '';
+  const adresse        = watch('adresse')           ?? '';
 
-  /* Button gating: disabled when products missing, livraison not set, or total is 0 */
+  /* Button gating */
   const canSubmit =
     !isSubmitting &&
+    nomPrenom.trim().length > 0 &&
+    /^0\d{9}$/.test(telephone) &&
+    adresse.trim().length > 0 &&
     typeLivraison !== 'none' &&
     totalPrixVente > 0 &&
     orderLines.every((l) => !!l.produitId);
@@ -1065,7 +1071,13 @@ export default function CommandeForm({ categories, defaultValues }: CommandeForm
           disabled={!canSubmit}
           className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           title={
-            typeLivraison === 'none'
+            nomPrenom.trim().length === 0
+              ? 'Renseignez le nom & prénom du client'
+              : !/^0\d{9}$/.test(telephone)
+              ? 'Numéro de téléphone invalide (10 chiffres, commence par 0)'
+              : adresse.trim().length === 0
+              ? "Renseignez l'adresse du client"
+              : typeLivraison === 'none'
               ? 'Sélectionnez un mode de livraison'
               : totalPrixVente === 0
               ? 'Ajoutez au moins un produit avec un prix'

@@ -263,6 +263,11 @@
   pointer-events: none;
 }
 
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
 @media print {
   body * {
     visibility: hidden !important;
@@ -282,9 +287,19 @@
     bottom: 0 !important;
     width: 100% !important;
     height: auto !important;
-    padding: 48px !important;
+    padding: 44px 56px !important;
     background: #ffffff !important;
-    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;
+    font-size: 13px !important;
+    color: #1E293B !important;
     z-index: 999999 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Prevent orphan headings and broken sections across pages */
+  .print-order-slip .print-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

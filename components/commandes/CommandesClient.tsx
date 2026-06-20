@@ -866,276 +866,237 @@ export default function CommandesClient({
       </AnimatePresence>
 
       {/* Print order slip — off-screen in UI, fills page during @media print */}
-      {selected && (
-        <div className="print-order-slip" aria-hidden="true">
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              marginBottom: "28px",
-              paddingBottom: "20px",
-              borderBottom: "2px solid #C5A059",
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: "22px",
-                  fontWeight: 800,
-                  color: "#1E293B",
-                  letterSpacing: "-0.5px",
-                  fontFamily: "Plus Jakarta Sans, sans-serif",
-                }}
-              >
-                GestionGarage
-              </div>
-              <div
-                style={{
-                  fontSize: "10px",
-                  color: "#94A3B8",
-                  marginTop: "3px",
-                  letterSpacing: "2px",
-                  textTransform: "uppercase",
-                }}
-              >
-                SIHAMDA FERRONNIER
-              </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div
-                style={{
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  color: "#C5A059",
-                  letterSpacing: "1px",
-                  textTransform: "uppercase",
-                }}
-              >
-                Bon de commande
-              </div>
-              <div
-                style={{ fontSize: "12px", color: "#64748B", marginTop: "4px" }}
-              >
-                Date : {formatDate(selected.date_commande)}
-              </div>
-            </div>
-          </div>
+      {selected && (() => {
+        const products = parseProductsTag(selected.notes);
+        const livraisonLabel =
+          LIVRAISON_OPTIONS.find((o) => o.value === (selected.type_livraison ?? "none"))?.label ?? "Aucune";
+        const sousTotal = selected.prix_total - (selected.tarif_livraison ?? 0);
+        const hasLivraison = (selected.tarif_livraison ?? 0) > 0;
+        const visibleNotes = (selected.notes ?? "")
+          .replace(/\[(BUREAU|REVIENT|PRODUITS|MOE):[^\]]*\]\n?/g, "")
+          .trim();
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "32px",
-              marginBottom: "24px",
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  color: "#94A3B8",
-                  letterSpacing: "2px",
-                  textTransform: "uppercase",
-                  marginBottom: "8px",
-                }}
-              >
-                Client
-              </div>
-              <div
-                style={{ fontSize: "15px", fontWeight: 700, color: "#1E293B" }}
-              >
-                {selected.nom_prenom}
-              </div>
-              <div
-                style={{ fontSize: "12px", color: "#64748B", marginTop: "3px" }}
-              >
-                {selected.telephone}
-              </div>
-              {selected.adresse && (
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "#64748B",
-                    marginTop: "3px",
-                  }}
-                >
-                  {selected.adresse}
-                </div>
-              )}
-            </div>
-            <div>
-              <div
-                style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  color: "#94A3B8",
-                  letterSpacing: "2px",
-                  textTransform: "uppercase",
-                  marginBottom: "8px",
-                }}
-              >
-                Produit
-              </div>
-              {selected.categorie?.nom && (
-                <div style={{ fontSize: "11px", color: "#94A3B8" }}>
-                  {selected.categorie.nom}
-                </div>
-              )}
-              {selected.option?.label && (
-                <div
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: "#1E293B",
-                    marginTop: "2px",
-                  }}
-                >
-                  {selected.option.label}
-                </div>
-              )}
-              {selected.mesure && (
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "#64748B",
-                    marginTop: "3px",
-                  }}
-                >
-                  Dimensions : {selected.mesure}
-                </div>
-              )}
-              {selected.couleur && (
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "#64748B",
-                    marginTop: "3px",
-                  }}
-                >
-                  Couleur : {selected.couleur}
-                </div>
-              )}
-            </div>
-          </div>
+        return (
+          <div className="print-order-slip" aria-hidden="true">
 
-          <div
-            style={{
-              borderTop: "1px solid rgba(197,160,89,0.25)",
-              paddingTop: "20px",
-              marginBottom: "24px",
-            }}
-          >
+            {/* ── 1. HEADER ── */}
             <div
-              style={{
-                fontSize: "10px",
-                fontWeight: 700,
-                color: "#94A3B8",
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-                marginBottom: "12px",
-              }}
-            >
-              Tarification
-            </div>
-            {selected.cout_revient != null && selected.cout_revient > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "12px",
-                  color: "#64748B",
-                  marginBottom: "6px",
-                }}
-              >
-                <span>Prix de revient</span>
-                <span>{formatMontant(selected.cout_revient!)}</span>
-              </div>
-            )}
-            {(selected.tarif_livraison ?? 0) > 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "12px",
-                  color: "#64748B",
-                  marginBottom: "6px",
-                }}
-              >
-                <span>
-                  Frais de livraison
-                  {selected.type_livraison &&
-                  selected.type_livraison !== "none"
-                    ? ` (${selected.type_livraison})`
-                    : ""}
-                </span>
-                <span>{formatMontant(selected.tarif_livraison!)}</span>
-              </div>
-            )}
-            <div
+              className="print-section"
               style={{
                 display: "flex",
+                alignItems: "flex-start",
                 justifyContent: "space-between",
-                fontSize: "17px",
-                fontWeight: 800,
-                color: "#C5A059",
-                marginTop: "10px",
-                paddingTop: "10px",
-                borderTop: "1px solid rgba(197,160,89,0.22)",
+                marginBottom: "32px",
+                paddingBottom: "22px",
+                borderBottom: "2.5px solid #0F172A",
               }}
             >
-              <span>Total client</span>
-              <span>{formatMontant(selected.prix_total)}</span>
-            </div>
-          </div>
-
-          {selected.notes && (
-            <div style={{ marginBottom: "24px" }}>
-              <div
-                style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  color: "#94A3B8",
-                  letterSpacing: "2px",
-                  textTransform: "uppercase",
-                  marginBottom: "8px",
-                }}
-              >
-                Notes
+              <div>
+                <div style={{ fontSize: "30px", fontWeight: 900, color: "#0F172A", letterSpacing: "-1px", lineHeight: 1 }}>
+                  MOBILE ART
+                </div>
+                <div style={{ fontSize: "9px", color: "#94A3B8", marginTop: "6px", letterSpacing: "3px", textTransform: "uppercase", fontWeight: 600 }}>
+                  SIHAMDA Ferronnerie
+                </div>
               </div>
-              <div
-                style={{ fontSize: "12px", color: "#64748B", lineHeight: 1.7 }}
-              >
-                {selected.notes}
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: "10px", fontWeight: 700, color: "#64748B", letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: "5px" }}>
+                  Bon de Commande
+                </div>
+                <div style={{ fontSize: "22px", fontWeight: 800, color: "#0F172A", letterSpacing: "-0.5px", lineHeight: 1 }}>
+                  #{selected.id.slice(0, 8).toUpperCase()}
+                </div>
+                <div style={{ fontSize: "12px", color: "#64748B", marginTop: "5px" }}>
+                  {formatDate(selected.date_commande)}
+                </div>
               </div>
             </div>
-          )}
 
-          <div
-            style={{
-              marginTop: "48px",
-              paddingTop: "14px",
-              borderTop: "1px solid rgba(197,160,89,0.18)",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
-          >
+            {/* ── 2. CLIENT + LIVRAISON ── */}
             <div
+              className="print-section"
               style={{
-                fontSize: "10px",
-                color: "#CBD5E1",
-                letterSpacing: "1px",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "24px",
+                marginBottom: "28px",
+                padding: "18px 22px",
+                backgroundColor: "#F8FAFC",
+                border: "1px solid #E2E8F0",
+                borderRadius: "6px",
               }}
             >
-              GestionGarage — SIHAMDA FERRONNIER
+              <div>
+                <div style={{ fontSize: "9px", fontWeight: 700, color: "#94A3B8", letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: "10px" }}>
+                  Informations client
+                </div>
+                <div style={{ fontSize: "16px", fontWeight: 700, color: "#0F172A", marginBottom: "4px" }}>
+                  {selected.nom_prenom}
+                </div>
+                <div style={{ fontSize: "13px", color: "#475569", marginBottom: "2px" }}>
+                  {selected.telephone}
+                </div>
+                {selected.adresse && (
+                  <div style={{ fontSize: "13px", color: "#475569" }}>{selected.adresse}</div>
+                )}
+              </div>
+              <div>
+                <div style={{ fontSize: "9px", fontWeight: 700, color: "#94A3B8", letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: "10px" }}>
+                  Type de livraison
+                </div>
+                <div style={{ fontSize: "14px", fontWeight: 700, color: "#0F172A", marginBottom: "4px" }}>
+                  {livraisonLabel}
+                </div>
+                {selected.bureau_nom && (
+                  <div style={{ fontSize: "13px", color: "#475569", marginBottom: "2px" }}>
+                    {selected.bureau_nom}
+                  </div>
+                )}
+                {hasLivraison && (
+                  <div style={{ fontSize: "13px", color: "#475569" }}>
+                    Tarif : {formatMontant(selected.tarif_livraison!)}
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={{ fontSize: "10px", color: "#CBD5E1" }}>
-              Imprimé le {new Date().toLocaleDateString("fr-FR")}
+
+            {/* ── 3. PRODUCTS TABLE ── */}
+            <div className="print-section" style={{ marginBottom: "26px" }}>
+              <div style={{ fontSize: "9px", fontWeight: 700, color: "#94A3B8", letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: "12px" }}>
+                Produits commandés
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", border: "1px solid #CBD5E1" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#F1F5F9" }}>
+                    <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "#374151", fontSize: "11px", borderBottom: "1px solid #CBD5E1", width: "38%" }}>
+                      Produit
+                    </th>
+                    <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, color: "#374151", fontSize: "11px", borderBottom: "1px solid #CBD5E1", width: "26%" }}>
+                      Détails
+                    </th>
+                    <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700, color: "#374151", fontSize: "11px", borderBottom: "1px solid #CBD5E1", width: "10%" }}>
+                      Qté
+                    </th>
+                    <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: "#374151", fontSize: "11px", borderBottom: "1px solid #CBD5E1", width: "13%" }}>
+                      Prix Unit.
+                    </th>
+                    <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, color: "#374151", fontSize: "11px", borderBottom: "1px solid #CBD5E1", width: "13%" }}>
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products?.length ? (
+                    products.map((p, i) => {
+                      const canPrice = products.length === 1;
+                      const unitP = canPrice ? sousTotal / (p.qty || 1) : null;
+                      const rowT = canPrice ? sousTotal : null;
+                      return (
+                        <tr key={i} style={{ borderBottom: "1px solid #E2E8F0" }}>
+                          <td style={{ padding: "12px 14px", verticalAlign: "top" }}>
+                            <span style={{ fontWeight: 600, color: "#0F172A" }}>{p.nom || p.cat || "—"}</span>
+                            {p.cat && p.nom && (
+                              <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "2px" }}>{p.cat}</div>
+                            )}
+                          </td>
+                          <td style={{ padding: "12px 14px", verticalAlign: "top", color: "#475569" }}>
+                            {p.dim && <div>{p.dim}</div>}
+                            {p.couleur && <div style={{ marginTop: p.dim ? "2px" : "0" }}>{p.couleur}</div>}
+                            {!p.dim && !p.couleur && "—"}
+                          </td>
+                          <td style={{ padding: "12px 14px", textAlign: "center", verticalAlign: "top", fontWeight: 700, color: "#374151" }}>
+                            {p.qty}
+                          </td>
+                          <td style={{ padding: "12px 14px", textAlign: "right", verticalAlign: "top", fontFamily: "monospace", color: "#374151" }}>
+                            {unitP != null ? formatMontant(unitP) : "—"}
+                          </td>
+                          <td style={{ padding: "12px 14px", textAlign: "right", verticalAlign: "top", fontFamily: "monospace", fontWeight: 700, color: "#0F172A" }}>
+                            {rowT != null ? formatMontant(rowT) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    /* Fallback: single-product legacy order */
+                    <tr style={{ borderBottom: "1px solid #E2E8F0" }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top" }}>
+                        <span style={{ fontWeight: 600, color: "#0F172A" }}>
+                          {selected.option?.label || selected.categorie?.nom || "—"}
+                        </span>
+                        {selected.categorie?.nom && selected.option?.label && (
+                          <div style={{ fontSize: "11px", color: "#94A3B8", marginTop: "2px" }}>{selected.categorie.nom}</div>
+                        )}
+                      </td>
+                      <td style={{ padding: "12px 14px", verticalAlign: "top", color: "#475569" }}>
+                        {selected.mesure && <div>{selected.mesure}</div>}
+                        {selected.couleur && <div style={{ marginTop: selected.mesure ? "2px" : "0" }}>{selected.couleur}</div>}
+                        {!selected.mesure && !selected.couleur && "—"}
+                      </td>
+                      <td style={{ padding: "12px 14px", textAlign: "center", verticalAlign: "top", fontWeight: 700, color: "#374151" }}>
+                        1
+                      </td>
+                      <td style={{ padding: "12px 14px", textAlign: "right", verticalAlign: "top", fontFamily: "monospace", color: "#374151" }}>
+                        {formatMontant(sousTotal)}
+                      </td>
+                      <td style={{ padding: "12px 14px", textAlign: "right", verticalAlign: "top", fontFamily: "monospace", fontWeight: 700, color: "#0F172A" }}>
+                        {formatMontant(sousTotal)}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+
+            {/* ── 4. TARIFICATION ── */}
+            <div className="print-section" style={{ marginBottom: "28px" }}>
+              <div style={{ fontSize: "9px", fontWeight: 700, color: "#94A3B8", letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: "12px" }}>
+                Tarification
+              </div>
+              <div style={{ border: "1px solid #E2E8F0", borderRadius: "6px", overflow: "hidden" }}>
+                {hasLivraison && (
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 18px", borderBottom: "1px solid #E2E8F0", fontSize: "13px" }}>
+                    <span style={{ color: "#475569" }}>Sous-total produits</span>
+                    <span style={{ color: "#374151", fontFamily: "monospace", fontWeight: 600 }}>{formatMontant(sousTotal)}</span>
+                  </div>
+                )}
+                {hasLivraison && (
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 18px", borderBottom: "1px solid #E2E8F0", fontSize: "13px" }}>
+                    <span style={{ color: "#475569" }}>Frais de livraison ({livraisonLabel})</span>
+                    <span style={{ color: "#374151", fontFamily: "monospace", fontWeight: 600 }}>{formatMontant(selected.tarif_livraison!)}</span>
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "16px 18px", backgroundColor: "#F8FAFC" }}>
+                  <span style={{ fontSize: "17px", fontWeight: 700, color: "#0F172A" }}>Total à régler</span>
+                  <span style={{ fontSize: "20px", fontWeight: 900, color: "#C5A059", fontFamily: "monospace" }}>{formatMontant(selected.prix_total)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 5. NOTES INTERNES (conditional) ── */}
+            {visibleNotes && (
+              <div className="print-section" style={{ marginBottom: "28px" }}>
+                <div style={{ fontSize: "9px", fontWeight: 700, color: "#94A3B8", letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: "10px" }}>
+                  Notes internes
+                </div>
+                <div style={{ fontSize: "12px", color: "#475569", lineHeight: 1.75, padding: "14px 16px", backgroundColor: "#FFFBEB", borderRadius: "6px", border: "1px solid #FDE68A", whiteSpace: "pre-line" }}>
+                  {visibleNotes}
+                </div>
+              </div>
+            )}
+
+            {/* ── FOOTER ── */}
+            <div style={{ marginTop: "52px", paddingTop: "14px", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: "10px", color: "#CBD5E1", letterSpacing: "1px", textTransform: "uppercase", fontWeight: 600 }}>
+                MOBILE ART — SIHAMDA Ferronnerie
+              </div>
+              <div style={{ fontSize: "10px", color: "#CBD5E1" }}>
+                Imprimé le {new Date().toLocaleDateString("fr-FR")}
+              </div>
+            </div>
+
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
