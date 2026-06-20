@@ -9,8 +9,6 @@ import type { AchatEntity } from '@gestion-garage/shared-validators';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { deleteAchat } from '@/lib/client-api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/admin';
-
 /* ─── Period filter ─── */
 const PERIODS = [
   { key: 'jour',    label: 'Jour',    api: 'day'     },
@@ -86,8 +84,8 @@ export default function AchatsPageClient() {
     setIsLoading(true);
     try {
       const [achatsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/achats?periode=${periode}&limit=100&sort=date_desc`, { credentials: 'include' }),
-        fetch(`${API_URL}/achats/stats?periode=${periode}`, { credentials: 'include' }),
+        fetch(`/api/proxy/achats?periode=${periode}&limit=100&sort=date_desc`),
+        fetch(`/api/proxy/achats/stats?periode=${periode}`),
       ]);
 
       if (achatsRes.ok) {

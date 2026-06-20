@@ -1,5 +1,7 @@
 'use client';
 
+// Direct backend URL — only used for auth endpoints (login/logout/refresh/me)
+// and the warm-up health ping, which need to interact with Render's cookie jar.
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/admin';
 
 // Derive the root origin for health checks (strips the /admin path segment)
@@ -26,7 +28,9 @@ export class ClientApiError extends Error {
   }
 }
 
-// ── Core fetch wrapper ─────────────────────────────────────────────
+// ── Auth/direct fetch (login, logout, refresh, me, ping) ────────────
+// These go straight to the backend so that the Render-domain httpOnly
+// cookie (access_token) is properly set/cleared by the browser.
 
 async function clientFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const controller = new AbortController();
@@ -37,6 +41,51 @@ async function clientFetch<T>(path: string, options?: RequestInit): Promise<T> {
       ...options,
       signal: controller.signal,
       credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+    });
+
+    if (res.status === 204) return undefined as T;
+
+    const body = (await res.json()) as Record<string, unknown>;
+
+    if (!res.ok) {
+      throw new ClientApiError(
+        res.status,
+        (body.message as string) ?? 'Erreur',
+        body.errors as Array<{ field: string; message: string }> | undefined,
+      );
+    }
+
+    return body as T;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ClientApiError(
+        0,
+        'Le serveur met trop de temps à répondre. Veuillez réessayer dans quelques secondes.',
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// ── Proxy fetch (all non-auth CRUD) ────────────────────────────────
+// Routes through /api/proxy/[...path] — a Next.js route handler that reads
+// the Vercel-domain admin_session cookie and forwards the JWT to the backend.
+// This eliminates the dependency on cross-site cookie delivery for mutations.
+
+async function proxyFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`/api/proxy${path}`, {
+      ...options,
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         ...options?.headers,
@@ -115,58 +164,58 @@ export const getMe = () =>
 // ── Commandes ───────────────────────────────────────────────────────
 
 export const createCommande = (data: unknown) =>
-  clientFetch('/commandes', { method: 'POST', body: JSON.stringify(data) });
+  proxyFetch('/commandes', { method: 'POST', body: JSON.stringify(data) });
 
 export const updateCommande = (id: string, data: unknown) =>
-  clientFetch(`/commandes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  proxyFetch(`/commandes/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
 export const updateCommandeStatut = (id: string, statut: string) =>
-  clientFetch(`/commandes/${id}/statut`, { method: 'PATCH', body: JSON.stringify({ statut }) });
+  proxyFetch(`/commandes/${id}/statut`, { method: 'PATCH', body: JSON.stringify({ statut }) });
 
 export const deleteCommande = (id: string) =>
-  clientFetch(`/commandes/${id}`, { method: 'DELETE' });
+  proxyFetch(`/commandes/${id}`, { method: 'DELETE' });
 
 // ── Vehicule ────────────────────────────────────────────────────────
 
 export const createVehiculeDepense = (data: unknown) =>
-  clientFetch('/vehicule/depenses', { method: 'POST', body: JSON.stringify(data) });
+  proxyFetch('/vehicule/depenses', { method: 'POST', body: JSON.stringify(data) });
 
 export const updateVehiculeDepense = (id: string, data: unknown) =>
-  clientFetch(`/vehicule/depenses/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  proxyFetch(`/vehicule/depenses/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
 export const deleteVehiculeDepense = (id: string) =>
-  clientFetch(`/vehicule/depenses/${id}`, { method: 'DELETE' });
+  proxyFetch(`/vehicule/depenses/${id}`, { method: 'DELETE' });
 
 // ── Achats ──────────────────────────────────────────────────────────
 
 export const createAchat = (data: unknown) =>
-  clientFetch('/achats', { method: 'POST', body: JSON.stringify(data) });
+  proxyFetch('/achats', { method: 'POST', body: JSON.stringify(data) });
 
 export const updateAchat = (id: string, data: unknown) =>
-  clientFetch(`/achats/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  proxyFetch(`/achats/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
 export const deleteAchat = (id: string) =>
-  clientFetch(`/achats/${id}`, { method: 'DELETE' });
+  proxyFetch(`/achats/${id}`, { method: 'DELETE' });
 
 // ── Categories ──────────────────────────────────────────────────────
 
 export const createCategorie = (data: unknown) =>
-  clientFetch('/categories', { method: 'POST', body: JSON.stringify(data) });
+  proxyFetch('/categories', { method: 'POST', body: JSON.stringify(data) });
 
 export const updateCategorie = (id: string, data: unknown) =>
-  clientFetch(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  proxyFetch(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
 
 export const deleteCategorie = (id: string) =>
-  clientFetch(`/categories/${id}`, { method: 'DELETE' });
+  proxyFetch(`/categories/${id}`, { method: 'DELETE' });
 
 export const createCategorieOption = (categorieId: string, data: unknown) =>
-  clientFetch(`/categories/${categorieId}/options`, { method: 'POST', body: JSON.stringify(data) });
+  proxyFetch(`/categories/${categorieId}/options`, { method: 'POST', body: JSON.stringify(data) });
 
 export const updateCategorieOption = (categorieId: string, optionId: string, data: unknown) =>
-  clientFetch(`/categories/${categorieId}/options/${optionId}`, { method: 'PUT', body: JSON.stringify(data) });
+  proxyFetch(`/categories/${categorieId}/options/${optionId}`, { method: 'PUT', body: JSON.stringify(data) });
 
 export const deleteCategorieOption = (categorieId: string, optionId: string) =>
-  clientFetch(`/categories/${categorieId}/options/${optionId}`, { method: 'DELETE' });
+  proxyFetch(`/categories/${categorieId}/options/${optionId}`, { method: 'DELETE' });
 
 export const uploadCategorieImage = async (categorieId: string, file: File) => {
   const formData = new FormData();

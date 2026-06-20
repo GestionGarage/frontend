@@ -9,8 +9,6 @@ import type { VehiculeDepenseEntity } from '@gestion-garage/shared-validators';
 import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { deleteVehiculeDepense } from '@/lib/client-api';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/admin';
-
 /* ─── Period filter ─── */
 const PERIODS = [
   { key: 'jour',    label: 'Jour',    api: 'day'     },
@@ -87,8 +85,8 @@ export default function VehiculePageClient() {
     setIsLoading(true);
     try {
       const [depensesRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/vehicule/depenses?periode=${periode}&limit=100&sort=date_desc`, { credentials: 'include' }),
-        fetch(`${API_URL}/vehicule/depenses/stats?periode=${periode}`, { credentials: 'include' }),
+        fetch(`/api/proxy/vehicule/depenses?periode=${periode}&limit=100&sort=date_desc`),
+        fetch(`/api/proxy/vehicule/depenses/stats?periode=${periode}`),
       ]);
 
       if (depensesRes.ok) {

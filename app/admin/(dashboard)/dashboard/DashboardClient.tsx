@@ -16,8 +16,6 @@ import { usePeriod } from '@/lib/hooks/usePeriod';
 import { formatMontant, formatPct } from '@/lib/formatters';
 import type { AnalyticsSummary, ChartDataPoint, ExpensesBreakdown } from '@gestion-garage/shared-validators';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/admin';
-
 const PERIOD_LABELS: Record<string, string> = {
   day:      "Aujourd'hui",
   week:     'Cette semaine',
@@ -83,7 +81,7 @@ const STATUT_CFG = {
 
 async function apiFetch(path: string) {
   try {
-    const res = await fetch(`${API_URL}${path}`, { credentials: 'include', cache: 'no-store' });
+    const res = await fetch(`/api/proxy${path}`, { cache: 'no-store' });
     if (!res.ok) return null;
     return res.json();
   } catch {
