@@ -105,12 +105,13 @@ export default function AchatForm({ defaultValues }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const isEdit = !!defaultValues?.id;
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<AchatUIForm>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting, isValid } } = useForm<AchatUIForm>({
     resolver: zodResolver(achatUISchema),
     defaultValues: {
       date_achat: todayISO(),
       prix_total: defaultValues?.prix_total ?? undefined,
     },
+    mode: 'onChange',
   });
 
   const typeValue = watch('type_materiau');
@@ -190,7 +191,7 @@ export default function AchatForm({ defaultValues }: Props) {
       )}
 
       <div className="flex gap-3">
-        <button type="submit" disabled={isSubmitting} className="btn-primary">
+        <button type="submit" disabled={!isValid || isSubmitting} className="btn-primary">
           {isSubmitting ? 'Enregistrement…' : isEdit ? 'Modifier' : 'Enregistrer'}
         </button>
         <button type="button" onClick={() => router.back()} className="btn-secondary">

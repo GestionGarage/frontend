@@ -80,10 +80,11 @@ export default function CategorieForm({ defaultValues }: Props) {
     register,
     handleSubmit,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
   } = useForm<CreateCategorieDto>({
     resolver: zodResolver(createCategorieSchema),
     defaultValues: { is_active: true, ordre: 0, options: [], ...defaultValues },
+    mode: 'onChange',
   });
 
   const nomValue = useWatch({ control, name: 'nom' }) ?? '';
@@ -189,7 +190,7 @@ export default function CategorieForm({ defaultValues }: Props) {
       )}
 
       <div className="flex gap-3">
-        <button type="submit" disabled={isSubmitting} className="btn-primary">
+        <button type="submit" disabled={!isValid || isSubmitting} className="btn-primary">
           {isSubmitting ? 'Enregistrement...' : isEdit ? 'Modifier' : 'Créer la catégorie'}
         </button>
         <button type="button" onClick={() => router.back()} className="btn-secondary">Annuler</button>

@@ -95,9 +95,10 @@ export default function VehiculeDepenseForm({ defaultValues }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const isEdit = !!defaultValues?.id;
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<CreateVehiculeDepenseDto>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting, isValid } } = useForm<CreateVehiculeDepenseDto>({
     resolver: zodResolver(createVehiculeDepenseSchema),
     defaultValues: { date_depense: todayISO(), ...defaultValues },
+    mode: 'onChange',
   });
 
   const typeValue = watch('type_depense');
@@ -177,7 +178,7 @@ export default function VehiculeDepenseForm({ defaultValues }: Props) {
       )}
 
       <div className="flex gap-3">
-        <button type="submit" disabled={isSubmitting} className="btn-primary">
+        <button type="submit" disabled={!isValid || isSubmitting} className="btn-primary">
           {isSubmitting ? 'Enregistrement…' : isEdit ? 'Modifier' : 'Enregistrer'}
         </button>
         <button type="button" onClick={() => router.back()} className="btn-secondary">
