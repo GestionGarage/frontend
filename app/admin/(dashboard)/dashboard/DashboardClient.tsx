@@ -66,7 +66,7 @@ function relativeTime(dateStr: string): string {
 function mapToRecentActivities(data: unknown[]): RecentActivity[] {
   return (data as Array<Record<string, unknown>>).map((c) => ({
     id: c.id as string,
-    client: `${c.nom as string} ${c.prenom as string}`,
+    client: (c.nom_prenom as string) ?? '—',
     categorie: (c.categorie as Record<string, unknown> | null)?.nom as string ?? '—',
     montant: Number(c.prix_total) || 0,
     statut: c.statut as string,
